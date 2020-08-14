@@ -1,13 +1,6 @@
 ﻿#include <iostream>
 #include <stdlib.h>
-//#include <QtDebug>
 #include <QtSql>
-//#include <QtSql/QSqlDatabase>
-//#include <QSqlError>
-//#include <QSqlQuery>
-//#include <QSqlQueryModel>
-//#include <QtCore/qglobal.h>
-//#include <QtCore/qarraydata.h> //for Qstringliteral
 #include <sys/time.h> //for timer
 #include <cstdlib> //for random number generation
 #include <tuple> //used in rotate_coords
@@ -16,10 +9,7 @@
 #include <sstream> //splitting config file strings
 #include <vector>
 #include <iomanip> //setprecision
-
-
-//#include "uepostgis.h" //Header for Unreal Engine
-
+#include "uepostgis.h"
 
 typedef  long timestamp_t;
 static timestamp_t
@@ -29,12 +19,10 @@ get_timestamp ()
   gettimeofday (&now, nullptr);
   return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
 }
-
-
-// Quick function for ST_Distance
-// Returns the minimum 2D Cartesian distance between two geometries in projected units
 double check_agent_dist(QSqlQueryModel& model, QString schema, QString A, QString B)
 {
+// Quick function for ST_Distance
+// Returns the minimum 2D Cartesian distance between two geometries in projected units
     QString sql_string = "select ST_Distance(g1.geom,g2.geom) "\
             "FROM "+schema+".status g1, "+schema+".status g2 "\
             "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
@@ -46,29 +34,10 @@ double check_agent_dist(QSqlQueryModel& model, QString schema, QString A, QStrin
                 " and "<<B<<" is " << distanceTest << endl;
     return distanceTest;
 }
-
-//// Calculates the distance from agent_id=1 to all agents of type 'car'
-//double check_agent_dist_agid(QSqlQueryModel& model, QString schema,QString A, QString B, bool diag) //TODO int here
-//{
-//    QString sql_string = "select ST_Distance(g1.geom,g2.geom) "
-//            "FROM "+schema+".status g1, "+schema+".status g2 "
-//            "WHERE g1.agent_type = 'car' AND g2.agent_id = 1"; //TODO edit this to work, car, 1
-//    model.setQuery(sql_string);
-//    double distanceTest = model.record(0).value(0).toDouble();
-//    if (model.lastError().isValid())
-//        qDebug() << "\033[0;31m#check_agent_dist_agid# " << model.lastError()<<"\033[0m";
-//    if(diag) qDebug() << "#check_agent_dist_agid# query run";
-//    return distanceTest;
-//}
-
-
-// for making red text \033[0;31m \033[0m\n
-
-
-// Function for ST_within
-// Returns TRUE if geometry A is completely inside geometry B.
 double check_agent_within(QSqlQueryModel& model, QString schema,QString A, QString B)
 {
+// Function for ST_within
+// Returns TRUE if geometry A is completely inside geometry B.
     QString sql_string = "select ST_Within(g1.geom,g2.geom) "\
             "FROM "+schema+".status g1, "+schema+".status g2 "\
             "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
@@ -80,12 +49,11 @@ double check_agent_within(QSqlQueryModel& model, QString schema,QString A, QStri
                 " within bounds of "<<B<<"? " << within_bound << endl;
     return within_bound;
 }
-
+double check_agent_overlap(QSqlQueryModel& model, QString schema,QString A, QString B)
+{
 // Function for ST_Overlaps
 // Returns TRUE if the Geometries "spatially overlap". By that we mean they intersect,
 // but one does not completely contain another.
-double check_agent_overlap(QSqlQueryModel& model, QString schema,QString A, QString B)
-{
     QString sql_string = "select ST_Overlaps(g1.geom,g2.geom) "\
             "FROM "+schema+".status g1, "+schema+".status g2 "\
             "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
@@ -97,13 +65,6 @@ double check_agent_overlap(QSqlQueryModel& model, QString schema,QString A, QStr
                 " and "<<B<<" overlap? " << agent_overlap << endl;
     return agent_overlap;
 }
-
-// Asertion check for collision
-//select ST_Overlaps(g1.geom,g2.geom)
-//            FROM ch03.geom g1, ch03.geom g2
-//            WHERE g1.agent_id = 9 AND g1.agent_type = 0 AND g1.sim_time = 0.3
-//			AND g2.agent_id = 8 AND g2.agent_type = 3 AND g2.sim_time = 0.3;
-
 double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, int A_ty, int B_id, int B_ty, double sim_time, bool diag=true)
 {
     QString qs, q1, q2, q3;
@@ -121,8 +82,8 @@ double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, i
                 " and "<<B_id<<" overlap? " << agent_overlap << endl;
     return agent_overlap;
 }
-
-
+double check_agent_contains(QSqlQueryModel& model, QString schema,QString A, QString B)
+{
 // Function for ST_Contains
 // Geometry A contains Geometry B if and only if no points of B lie in the exterior of
 // A, and at least one point of the interior of B lies in the interior of A. An
@@ -130,8 +91,6 @@ double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, i
 // but A does contain itself. Contrast that to ST_ContainsProperly where geometry
 // A does not Contain Properly itself.
 // Returns TRUE if geometry B is completely inside geometry A.
-double check_agent_contains(QSqlQueryModel& model, QString schema,QString A, QString B)
-{
     QString sql_string = "select ST_Contains(g1.geom,g2.geom) "\
             "FROM "+schema+".status g1, "+schema+".status g2 "\
             "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
@@ -143,11 +102,9 @@ double check_agent_contains(QSqlQueryModel& model, QString schema,QString A, QSt
                 " completely contain "<<B<<"? " << agent_contains << endl;
     return agent_contains;
 }
-
-
-// Add agents to database lookup table
 void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, double agentWidth, double agentLength, bool diag=true)
 {
+// Add agents to database lookup table
     QString qs, q1, q2, q3;
     q1 = "INSERT INTO "+schema+".lookup_type (agent_type,width,length) VALUES ( '";
     q2 = QString::fromStdString(agentType);
@@ -158,11 +115,9 @@ void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, doub
         qDebug() << "\033[0;31m#add_agent# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "#add_agent# Database updated:"  << qs;
 }
-
-// Update agent position
-void update_agent_position(QSqlQueryModel& model, QString schema,std::string agentType, double x1, double y1,
-                           double agLengt, double agWidth, bool diag=true)
+void update_agent_position(QSqlQueryModel& model, QString schema,std::string agentType, double x1, double y1,double agLengt, double agWidth, bool diag=true)
 {
+// Update agent position
     double x2, y2;
     x2 = x1 + agLengt;
     y2 = y1 + agWidth;
@@ -180,22 +135,19 @@ void update_agent_position(QSqlQueryModel& model, QString schema,std::string age
     if (diag)
         qDebug() << "#update_agent_position# Agents updated:"  << qs;
 }
-
-// Rotation matrix fuinction, returns x' and y' given x, y, yaw(rads)
 std::tuple<double, double> rotate_coords(double x, double y, double yaw, bool diag=true)
 {
+// Rotation matrix fuinction, returns x' and y' given x, y, yaw(rads)
     double xd = x * cos(yaw) - y * sin(yaw);
     double yd = x * sin(yaw) + y * cos(yaw);
     if(diag)
         qDebug() << "#rotate_coords# coordinates rotated";
     return std::make_tuple(xd,yd);
 }
-
-
-// Update agent position - BATCH VERSION
-// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
 void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string, bool diag=true)
 {
+// Update agent position - BATCH VERSION
+// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
     // Receive batch string from AG
     QString qs =QString::fromStdString(batch_string);
     model.setQuery(qs);
@@ -204,12 +156,9 @@ void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string
     if(diag)
         qDebug() << "#update_agent_position_batch# batch update";
 }
-
-
-// Create shapes from position, type and orientation
-void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_typ, double sim_time,
-                        double ag_len, double ag_wid, double posX, double posY, double yaw_deg, bool diag=true)
+void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_typ, double sim_time,double ag_len, double ag_wid, double posX, double posY, double yaw_deg, bool diag=true)
 {
+// Create shapes from position, type and orientation
     //yaw to radians
     double rads = yaw_deg * 3.141592653 / 180;
 
@@ -262,10 +211,9 @@ void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_
     if(diag)
         qDebug() << "#update_agent_shape# agent shape update";
 }
-
+double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true)
+{
 //Get rotated coords from agent pos and shape
-double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true){
-
     static double return_coordiantes[10];
 
     //yaw to radians conversion if necessary
@@ -311,16 +259,11 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
 
     return return_coordiantes;
 }
-
-
-
-
-// Update agent position - BATCH VERSION
-// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
-void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,
-                 double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
+void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
 {
     //call the coordinates
+// Update agent position - BATCH VERSION
+// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
     double *rc;
     rc = return_coords(ag_len[0], ag_wid[0], posX[0], posY[0], yaw_deg[0],diag);
     double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
@@ -351,13 +294,9 @@ void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[]
     if(diag)
         qDebug() << "#update_agent_shape_batch# " << qs;
 }
-
-
-// updated to include width/length selection from enum list
-void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_id[], unsigned long ag_typ[], double sim_time, unsigned long nA,
-                 double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[],
-                std::vector<double>& agWidth_lookup, std::vector<double>& agLengt_lookup, bool diag=true)
+void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_id[], unsigned long ag_typ[], double sim_time, unsigned long nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[],std::vector<double>& agWidth_lookup, std::vector<double>& agLengt_lookup, bool diag=true)
 {
+// updated to include width/length selection from enum list
     //Update the width/length based on the agent ID
     if(nA>1){
         for(unsigned long i=0;i<nA;i++){
@@ -398,15 +337,9 @@ void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_i
     if(diag)
         qDebug() << "#update_agent_shape_batch_ID# " << qs;
 }
-
-
-
-//TODO wrap all assertions into a file/folder
-
+void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, std::vector<double>& agWidth_lookup,std::vector<double>& agLengt_lookup, unsigned long nA = 10, bool diag=true)
+{
 //batch mode string updater - set number of random agents nA
-void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, std::vector<double>& agWidth_lookup,
-                       std::vector<double>& agLengt_lookup, unsigned long nA = 10, bool diag=true){
-
     std::string agType_lookup[5] = {"AV","car","ped","hgv","cyclist"};  // to access use agent_type[0] etc.
     //double agWidth_lookup [5] = {2.0,2.0,0.5,3.5,0.5};
     //double agLengt_lookup [5] = {4.0,4.0,0.5,6.5,1.5};
@@ -440,6 +373,7 @@ void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, s
             }
             timestamp_t t0 = get_timestamp();
             //update_agent_shape_batch
+
             update_agent_shape_batch_ID(model, schema, ag_id, ag_typ, sim_time, nA, ag_len, ag_wid,
                                         posX, posY, yaw_deg, agWidth_lookup, agLengt_lookup, diag);
             // stop timer
@@ -456,7 +390,6 @@ void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, s
     }
 }
 
-#include "uepostgis.h"
 
 class AgentConfig
 {
