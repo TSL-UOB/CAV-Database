@@ -1,0 +1,1218 @@
+﻿#include <iostream>
+#include <stdlib.h>
+//#include <QtDebug>
+#include <QtSql>
+//#include <QtSql/QSqlDatabase>
+//#include <QSqlError>
+//#include <QSqlQuery>
+//#include <QSqlQueryModel>
+//#include <QtCore/qglobal.h>
+//#include <QtCore/qarraydata.h> //for Qstringliteral
+#include <sys/time.h> //for timer
+#include <cstdlib> //for random number generation
+#include <tuple> //used in rotate_coords
+#include <cmath>
+#include <fstream> //reading config file
+#include <sstream> //splitting config file strings
+#include <vector>
+#include <iomanip> //setprecision
+
+
+//#include "uepostgis.h" //Header for Unreal Engine
+
+
+typedef  long timestamp_t;
+static timestamp_t
+get_timestamp ()
+{
+  struct timeval now;
+  gettimeofday (&now, nullptr);
+  return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
+}
+
+
+// Quick function for ST_Distance
+// Returns the minimum 2D Cartesian distance between two geometries in projected units
+double check_agent_dist(QSqlQueryModel& model, QString schema, QString A, QString B)
+{
+    QString sql_string = "select ST_Distance(g1.geom,g2.geom) "\
+            "FROM "+schema+".status g1, "+schema+".status g2 "\
+            "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
+    model.setQuery(sql_string);
+    double distanceTest = model.record(0).value(0).toDouble();
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#check_agent_dist# " << model.lastError()<<"\033[0m";
+    qDebug() << "#check_agent_dist# Distance between "<< A<<
+                " and "<<B<<" is " << distanceTest << endl;
+    return distanceTest;
+}
+
+//// Calculates the distance from agent_id=1 to all agents of type 'car'
+//double check_agent_dist_agid(QSqlQueryModel& model, QString schema,QString A, QString B, bool diag) //TODO int here
+//{
+//    QString sql_string = "select ST_Distance(g1.geom,g2.geom) "
+//            "FROM "+schema+".status g1, "+schema+".status g2 "
+//            "WHERE g1.agent_type = 'car' AND g2.agent_id = 1"; //TODO edit this to work, car, 1
+//    model.setQuery(sql_string);
+//    double distanceTest = model.record(0).value(0).toDouble();
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#check_agent_dist_agid# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "#check_agent_dist_agid# query run";
+//    return distanceTest;
+//}
+
+
+// for making red text \033[0;31m \033[0m\n
+
+
+// Function for ST_within
+// Returns TRUE if geometry A is completely inside geometry B.
+double check_agent_within(QSqlQueryModel& model, QString schema,QString A, QString B)
+{
+    QString sql_string = "select ST_Within(g1.geom,g2.geom) "\
+            "FROM "+schema+".status g1, "+schema+".status g2 "\
+            "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
+    model.setQuery(sql_string);
+    bool within_bound = model.record(0).value(0).toBool();
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#check_agent_within# " << model.lastError()<<"\033[0m";
+    qDebug() << "#check_agent_within# Is "<< A<<
+                " within bounds of "<<B<<"? " << within_bound << endl;
+    return within_bound;
+}
+
+// Function for ST_Overlaps
+// Returns TRUE if the Geometries "spatially overlap". By that we mean they intersect,
+// but one does not completely contain another.
+double check_agent_overlap(QSqlQueryModel& model, QString schema,QString A, QString B)
+{
+    QString sql_string = "select ST_Overlaps(g1.geom,g2.geom) "\
+            "FROM "+schema+".status g1, "+schema+".status g2 "\
+            "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
+    model.setQuery(sql_string);
+    bool agent_overlap = model.record(0).value(0).toBool();
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#check_agent_overlap# " << model.lastError()<<"\033[0m";
+    qDebug() << "#check_agent_overlap# Do "<< A<<
+                " and "<<B<<" overlap? " << agent_overlap << endl;
+    return agent_overlap;
+}
+
+// Asertion check for collision
+//select ST_Overlaps(g1.geom,g2.geom)
+//            FROM ch03.geom g1, ch03.geom g2
+//            WHERE g1.agent_id = 9 AND g1.agent_type = 0 AND g1.sim_time = 0.3
+//			AND g2.agent_id = 8 AND g2.agent_type = 3 AND g2.sim_time = 0.3;
+
+double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, int A_ty, int B_id, int B_ty, double sim_time, bool diag=true)
+{
+    QString qs, q1, q2, q3;
+    q1 = "select ST_Overlaps(g1.geom,g2.geom) "
+            "FROM "+schema+".status g1, "+schema+".status g2 ";
+    q2 = QStringLiteral("WHERE g1.agent_id = %1 AND g1.agent_type = %2 AND g1.sim_time = %3 ").arg(A_id).arg(A_ty).arg(sim_time);
+    q3 = QStringLiteral("AND g2.agent_id = %1 AND g2.agent_type = %2 AND g2.sim_time = %3 ").arg(B_id).arg(B_ty).arg(sim_time);
+    qs = q1+q2+q3;
+
+    model.setQuery(qs);
+    bool agent_overlap = model.record(0).value(0).toBool();
+    if (model.lastError().isValid())
+        qDebug() << "#\033[0;31mass_check_agent_overlap# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#ass_check_agent_overlap# Do "<< A_id<<
+                " and "<<B_id<<" overlap? " << agent_overlap << endl;
+    return agent_overlap;
+}
+
+
+// Function for ST_Contains
+// Geometry A contains Geometry B if and only if no points of B lie in the exterior of
+// A, and at least one point of the interior of B lies in the interior of A. An
+// important subtlety of this definition is that A does not contain its boundary,
+// but A does contain itself. Contrast that to ST_ContainsProperly where geometry
+// A does not Contain Properly itself.
+// Returns TRUE if geometry B is completely inside geometry A.
+double check_agent_contains(QSqlQueryModel& model, QString schema,QString A, QString B)
+{
+    QString sql_string = "select ST_Contains(g1.geom,g2.geom) "\
+            "FROM "+schema+".status g1, "+schema+".status g2 "\
+            "WHERE g1.agent_type = '"+A+"' AND g2.agent_type = '"+B+"'";
+    model.setQuery(sql_string);
+    bool agent_contains = model.record(0).value(0).toBool();
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#check_agent_contains# " << model.lastError()<<"\033[0m";
+    qDebug() << "#check_agent_contains# Does "<< A<<
+                " completely contain "<<B<<"? " << agent_contains << endl;
+    return agent_contains;
+}
+
+
+// Add agents to database lookup table
+void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, double agentWidth, double agentLength, bool diag=true)
+{
+    QString qs, q1, q2, q3;
+    q1 = "INSERT INTO "+schema+".lookup_type (agent_type,width,length) VALUES ( '";
+    q2 = QString::fromStdString(agentType);
+    q3 = QStringLiteral("', %1, %2)").arg(agentWidth).arg(agentLength);
+    qs = q1 + q2 + q3;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#add_agent# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#add_agent# Database updated:"  << qs;
+}
+
+// Update agent position
+void update_agent_position(QSqlQueryModel& model, QString schema,std::string agentType, double x1, double y1,
+                           double agLengt, double agWidth, bool diag=true)
+{
+    double x2, y2;
+    x2 = x1 + agLengt;
+    y2 = y1 + agWidth;
+    QString qs, q1, q2, q3, q4, qAT;
+    q1 = "INSERT INTO "+schema+".status (";
+    q2 = "agent_type, geom) VALUES ('";
+    qAT =QString::fromStdString(agentType);
+    q3 = "',ST_GeomFromText('POLYGON((";
+    q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))'))").
+         arg(x1).arg(y1).arg(x2).arg(y1).arg(x2).arg(y2).arg(x1).arg(y2);
+    qs = q1 + q2 + qAT + q3 + q4;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_position# " << model.lastError()<<"\033[0m";
+    if (diag)
+        qDebug() << "#update_agent_position# Agents updated:"  << qs;
+}
+
+// Rotation matrix fuinction, returns x' and y' given x, y, yaw(rads)
+std::tuple<double, double> rotate_coords(double x, double y, double yaw, bool diag=true)
+{
+    double xd = x * cos(yaw) - y * sin(yaw);
+    double yd = x * sin(yaw) + y * cos(yaw);
+    if(diag)
+        qDebug() << "#rotate_coords# coordinates rotated";
+    return std::make_tuple(xd,yd);
+}
+
+
+// Update agent position - BATCH VERSION
+// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
+void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string, bool diag=true)
+{
+    // Receive batch string from AG
+    QString qs =QString::fromStdString(batch_string);
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_position_batch# " << model.lastError()<<"\033[0m";
+    if(diag)
+        qDebug() << "#update_agent_position_batch# batch update";
+}
+
+
+// Create shapes from position, type and orientation
+void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_typ, double sim_time,
+                        double ag_len, double ag_wid, double posX, double posY, double yaw_deg, bool diag=true)
+{
+    //yaw to radians
+    double rads = yaw_deg * 3.141592653 / 180;
+
+    // calculate shape coordiantes from posX/Y and yaw
+    double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
+    double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
+    double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
+    double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+
+    //use rotationmatrix to get rotated coordinates
+    double x1r, y1r, x2r, y2r, x3r, y3r, x4r, y4r;
+    std::tie(x1r, y1r) = rotate_coords(x1, y1, rads, false); //unpack tuple elements
+    std::tie(x2r, y2r) = rotate_coords(x2, y2, rads, false); //unpack tuple elements
+    std::tie(x3r, y3r) = rotate_coords(x3, y3, rads, false); //unpack tuple elements
+    std::tie(x4r, y4r) = rotate_coords(x4, y4, rads, false); //unpack tuple elements
+    if(diag){
+        qDebug() << "#update_agent_shape# x1r" << x1r << "y1r" << y1r;
+        qDebug() << "#update_agent_shape# x2r" << x2r << "y2r" << y2r;
+        qDebug() << "#update_agent_shape# x3r" << x3r << "y3r" << y3r;
+        qDebug() << "#update_agent_shape# x4r" << x4r << "y4r" << y4r;
+    }
+
+    // Add the original position to the coordinates to transform back to mapp coordinates
+    x1=x1r+posX; x2=x2r+posX; x3=x3r+posX; x4=x4r+posX;
+    y1=y1r+posY; y2=y2r+posY; y3=y3r+posY; y4=y4r+posY;
+    if(diag){
+        qDebug() << "#update_agent_shape# transforming offset" ;
+        qDebug() << "#update_agent_shape# x1" << x1 << "y1" << y1;
+        qDebug() << "#update_agent_shape# x2" << x2 << "y2" << y2;
+        qDebug() << "#update_agent_shape# x3" << x3 << "y3" << y3;
+        qDebug() << "#update_agent_shape# x4" << x4 << "y4" << y4;
+    }
+
+    // build string
+    QString qs, q1, q2, q3, q4, qAT;
+    q1 = "INSERT INTO "+schema+".status (";
+    q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
+    qAT =QStringLiteral("%1, %2, %3").arg(ag_id).arg(ag_typ).arg(sim_time);
+    q3 = ",ST_GeomFromText('POLYGON((";
+    q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))'))").
+         arg(x1).arg(y1).arg(x2).arg(y2).arg(x3).arg(y3).arg(x4).arg(y4);
+    qs = q1 + q2 + qAT + q3 + q4;
+    if(diag)
+        qDebug() << "#update_agent_shape# QString: " << qs;
+
+    // send string
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
+    if(diag)
+        qDebug() << "#update_agent_shape# agent shape update";
+}
+
+//Get rotated coords from agent pos and shape
+double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true){
+
+    static double return_coordiantes[10];
+
+    //yaw to radians conversion if necessary
+    double rads;
+    if(rad_format){
+        rads = yaw; //no conversion required from UE4
+    }else{
+        rads = yaw * 3.141592653 / 180;
+    }
+
+
+    // calculate shape coordiantes from posX/Y and yaw
+    double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
+    double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
+    double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
+    double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+
+    //use rotationmatrix to get rotated coordinates
+    double x1r, y1r, x2r, y2r, x3r, y3r, x4r, y4r;
+    std::tie(x1r, y1r) = rotate_coords(x1, y1, rads, false); //unpack tuple elements
+    std::tie(x2r, y2r) = rotate_coords(x2, y2, rads, false); //unpack tuple elements
+    std::tie(x3r, y3r) = rotate_coords(x3, y3, rads, false); //unpack tuple elements
+    std::tie(x4r, y4r) = rotate_coords(x4, y4, rads, false); //unpack tuple elements
+    if(diag){
+        qDebug() << "#update_agent_shape# x1r" << x1r << "y1r" << y1r;
+        qDebug() << "#update_agent_shape# x2r" << x2r << "y2r" << y2r;
+        qDebug() << "#update_agent_shape# x3r" << x3r << "y3r" << y3r;
+        qDebug() << "#update_agent_shape# x4r" << x4r << "y4r" << y4r;
+    }
+
+    // Add the original position to the coordinates to transform back to map coordinates
+    x1=x1r+posX; x2=x2r+posX; x3=x3r+posX; x4=x4r+posX;
+    y1=y1r+posY; y2=y2r+posY; y3=y3r+posY; y4=y4r+posY;
+
+    return_coordiantes[0] = x1;
+	return_coordiantes[1] = x2;
+	return_coordiantes[2] = x3;
+	return_coordiantes[3] = x4;
+	return_coordiantes[4] = y1;
+	return_coordiantes[5] = y2;
+	return_coordiantes[6] = y3;
+	return_coordiantes[7] = y4;
+
+    return return_coordiantes;
+}
+
+
+
+
+// Update agent position - BATCH VERSION
+// INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
+void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,
+                 double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
+{
+    //call the coordinates
+    double *rc;
+    rc = return_coords(ag_len[0], ag_wid[0], posX[0], posY[0], yaw_deg[0],diag);
+    double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
+
+    // build string
+    QString qs, q1, q2, q3, q4, qEnd, dummy;
+    q1 = "INSERT INTO "+schema+".status (";
+    q2 = "agent_id, agent_type, sim_time, geom) VALUES ";
+    q3 = QStringLiteral("(%1, %2, %3, ST_GeomFromText('POLYGON((").arg(ag_id[0]).arg(ag_typ[0]).arg(sim_time);
+    q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))'))").
+         arg(x1).arg(y1).arg(x2).arg(y2).arg(x3).arg(y3).arg(x4).arg(y4);
+    qs = q1 + q2 + q3 + q4;
+    //start loop here for compunt string
+    if(nA>1){
+        for(int i=1;i<nA;i++){
+            rc = return_coords(ag_len[i], ag_wid[i], posX[i], posY[i], yaw_deg[i],diag);
+            double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
+            dummy = QStringLiteral(", (%1, %2, %3, ST_GeomFromText('POLYGON(( %4 %5, %6 %7, %8 %9, %10 %11, %4 %5))'))")
+            .arg(ag_id[i]).arg(ag_typ[i]).arg(sim_time).arg(x1).arg(y1).arg(x2).arg(y2).arg(x3).arg(y3).arg(x4).arg(y4);
+           qs = qs + dummy;
+        }
+    }
+//    qEnd = ")";
+//    qs = qs + qEnd;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape_batch# " << model.lastError()<<"\033[0m";
+    if(diag)
+        qDebug() << "#update_agent_shape_batch# " << qs;
+}
+
+
+// updated to include width/length selection from enum list
+void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_id[], unsigned long ag_typ[], double sim_time, unsigned long nA,
+                 double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[],
+                std::vector<double>& agWidth_lookup, std::vector<double>& agLengt_lookup, bool diag=true)
+{
+    //Update the width/length based on the agent ID
+    if(nA>1){
+        for(unsigned long i=0;i<nA;i++){
+            ag_wid[i] = agWidth_lookup[ag_typ[i]];
+            ag_len[i] = agLengt_lookup[ag_typ[i]];
+            //std::cout <<"ag_typ[i]="<<ag_typ[i]<<" ag_wid[i]="<<ag_wid[i]<<" ag_len[i]"<<ag_len[i];
+        }
+    }
+
+    //call the coordinates
+    double *rc;
+    rc = return_coords(ag_len[0], ag_wid[0], posX[0], posY[0], yaw_deg[0],false); //edit diag
+    double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
+
+    // build string
+    QString qs, q1, q2, q3, q4, qEnd, dummy;
+    q1 = "INSERT INTO "+schema+".status (";
+    q2 = "agent_id, agent_type, sim_time, geom) VALUES ";
+    q3 = QStringLiteral("(%1, %2, %3, ST_GeomFromText('POLYGON((").arg(ag_id[0]).arg(ag_typ[0]).arg(sim_time);
+    q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))'))").
+         arg(x1).arg(y1).arg(x2).arg(y2).arg(x3).arg(y3).arg(x4).arg(y4);
+    qs = q1 + q2 + q3 + q4;
+    //start loop here for compunt string
+    if(nA>1){
+        for(unsigned long i=1;i<nA;i++){
+            rc = return_coords(ag_len[i], ag_wid[i], posX[i], posY[i], yaw_deg[i],false); //edit diag
+            double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
+            dummy = QStringLiteral(", (%1, %2, %3, ST_GeomFromText('POLYGON(( %4 %5, %6 %7, %8 %9, %10 %11, %4 %5))'))")
+            .arg(ag_id[i]).arg(ag_typ[i]).arg(sim_time).arg(x1).arg(y1).arg(x2).arg(y2).arg(x3).arg(y3).arg(x4).arg(y4);
+           qs = qs + dummy;
+        }
+    }
+//    qEnd = ")";
+//    qs = qs + qEnd;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape_batch_ID# " << model.lastError()<<"\033[0m";
+    if(diag)
+        qDebug() << "#update_agent_shape_batch_ID# " << qs;
+}
+
+
+
+//TODO wrap all assertions into a file/folder
+
+//batch mode string updater - set number of random agents nA
+void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, std::vector<double>& agWidth_lookup,
+                       std::vector<double>& agLengt_lookup, unsigned long nA = 10, bool diag=true){
+
+    std::string agType_lookup[5] = {"AV","car","ped","hgv","cyclist"};  // to access use agent_type[0] etc.
+    //double agWidth_lookup [5] = {2.0,2.0,0.5,3.5,0.5};
+    //double agLengt_lookup [5] = {4.0,4.0,0.5,6.5,1.5};
+
+    for(int k=0;k<1;k++){
+        unsigned long loops = 1;
+        double sum_time=0;
+
+        for(unsigned long j=0;j<loops;j++){
+            //double sim_time = 0.0;
+            //int nA = 10;            //*** SET nA=1 for single write test ***
+
+            //qDebug() << "Looping for " << array_size << " iterations" << endl;
+            int* ag_id      = new int[nA];
+            unsigned long* ag_typ     = new unsigned long[nA];
+            double* ag_len  = new double[nA];
+            double* ag_wid  = new double[nA];
+            double* posX    = new double[nA];
+            double* posY    = new double[nA];
+            double* yaw_deg = new double[nA];
+
+            // create array of random numbers
+            for(unsigned long i=0; i<nA; ++i) {
+                ag_id[i]	 = ( std::rand()  ); //% 1000000
+                ag_typ[i]	 = ( std::rand() % 4 ) + 1; //ag_typ=0 reserved for AV
+                ag_len[i]	 = ( std::rand() % 4 );
+                ag_wid[i]	 = ( std::rand() % 2 );
+                posX[i]		 = ( std::rand() % 20 );
+                posY[i]		 = ( std::rand() % 20 );
+                yaw_deg[i]	 = ( std::rand() % 180 );
+            }
+            timestamp_t t0 = get_timestamp();
+            //update_agent_shape_batch
+            update_agent_shape_batch_ID(model, schema, ag_id, ag_typ, sim_time, nA, ag_len, ag_wid,
+                                        posX, posY, yaw_deg, agWidth_lookup, agLengt_lookup, diag);
+            // stop timer
+            timestamp_t t1 = get_timestamp();
+            // print time results and agent count
+            double secs = (t1 - t0) / 1000000.0;
+            //qDebug() << "Time taken (s) = " << secs << endl;
+            //qDebug() << "batch execution time for loop#" << j << " with "<< nA << " agents is " << secs ;
+            //qDebug() << secs ;
+            sum_time += secs;
+        }
+        if(diag) qDebug() << "average time is" << sum_time/(loops * nA);
+        //    qDebug() << sum_time/(loops * nA);
+    }
+}
+
+#include "uepostgis.h"
+
+class AgentConfig
+{
+    // Use the index to access agent types, modify the agent_config.txt to change
+    // or modify values
+    // INDEX 0=AV, 1=Car, 2=Ped, 3=hgv, 4=cyclist
+
+public: std::vector<std::string> vect_typ;
+        std::vector<double> vect_wid, vect_len;
+        std::string cfg_typ;
+        std::string cfg_wid;
+        std::string cfg_len;
+        std::string header;
+
+        void read_file(std::ifstream& myfile, bool diag=true)
+        {
+            std::cout << "\n*********************"<< std::endl;
+            std::cout << " Reading Config File "<< std::endl;
+            std::cout << "*********************"<< std::endl;
+
+            if (myfile.is_open())
+            {
+                getline(myfile,header);
+                getline(myfile,cfg_typ);
+                getline(myfile,cfg_wid);
+                getline(myfile,cfg_len);
+            } else {
+                qDebug() << "\033[0;31m#AgentConfig.read_file# ERROR: Config File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
+            }
+
+            if(diag) std::cout << "#AgentConfig.read_file#" << std::endl;
+            if(diag) std::cout << header  << std::endl;
+            if(diag) std::cout << cfg_typ << std::endl;
+            if(diag) std::cout << cfg_wid << std::endl;
+            if(diag) std::cout << cfg_len << std::endl;
+
+            std::stringstream ss_typ(cfg_typ), ss_wid(cfg_wid), ss_len(cfg_len);
+            std::string token;
+
+            //Parse the type string
+            while(std::getline(ss_typ, token, ',')) {
+                //std::cout << "while token: " << token << '\n';
+                vect_typ.push_back(token);
+                if (ss_typ.peek() == ',')
+                    ss_typ.ignore();
+            }
+            {
+                for (unsigned i=0; i< vect_typ.size(); i++)
+                    std::cout <<"config for "<< vect_typ.at(i)<<" updated..."<<std::endl;
+            }
+
+            double kk;
+            //Parse the width string
+            while (ss_wid >> kk)
+            {
+                vect_wid.push_back(kk);
+                if (ss_wid.peek() == ',')
+                    ss_wid.ignore();
+            }
+            if(diag){
+                for (unsigned i=0; i< vect_wid.size(); i++)
+                    if(diag) std::cout << vect_wid.at(i)<<std::endl;
+            }
+
+            // Parse the length string
+            while (ss_len >> kk)
+            {
+                vect_len.push_back(kk);
+                if (ss_len.peek() == ',')
+                    ss_len.ignore();
+            }
+            if(diag){
+                for (unsigned i=0; i< vect_len.size(); i++)
+                    if(diag) std::cout << vect_len.at(i)<<std::endl;
+            }
+        }
+};
+
+//read sim data file
+
+class readSimLog
+{
+
+public:
+        std::ifstream myfile;   //filename for the log
+        std::string header; //csv header
+        unsigned long fileLineCount = 0;
+        std::string line; //temporary holder for csv line
+        //Use a structure for csv columns
+        struct Record
+        {
+            int agentID;
+            std::string agentType;
+            int testNo, repeatNo, agentNo, agentTypeNo;
+            double simTime, simFPS, simX, simY, simZ, simYaw;
+        };
+        std::vector<Record> my_records;
+
+    void read_file(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
+    {
+        std::cout << "\n***********************"<< std::endl;
+        std::cout << " Reading Sim Data File "<< std::endl;
+        std::cout << "***********************"<< std::endl;
+
+        if (myfile.is_open())
+        {
+            if (diag) std::cout << "Sim Data File opened successfully." << std::endl;
+            getline(myfile,header);
+
+            while (getline(myfile, line))
+            {
+                //9 columns: agentID, agentType, agentTypeNo, time, fps, x, y, z, yaw
+                Record record;
+                fileLineCount++;
+                std::istringstream iss(line);
+                std::string token;
+
+                getline(iss, token, ',');
+                record.agentID = std::stoi(token);
+
+                getline(iss, record.agentType, ',');
+
+                getline(iss, token, ',');
+                record.agentTypeNo = std::stoi(token);
+
+                getline(iss, token, ',');
+                record.simTime = std::stod(token);
+
+                getline(iss, token, ',');
+                record.simFPS = std::stod(token);
+
+                getline(iss, token, ',');
+                record.simX = std::stod(token);
+
+                getline(iss, token, ',');
+                record.simY = std::stod(token);
+
+                getline(iss, token, ',');
+                record.simZ = std::stod(token);
+
+                getline(iss, token, ',');
+                record.simYaw = std::stod(token);
+
+                my_records.push_back(record);
+
+            }//while getline
+
+        } else {
+            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
+        } //if myfile is_open
+
+
+        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
+    }
+
+    void read_file_carla(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
+    {
+        std::cout << "\n***********************"<< std::endl;
+        std::cout << " Reading Carla Data File "<< std::endl;
+        std::cout << "***********************"<< std::endl;
+
+        if (myfile.is_open())
+        {
+            if (diag) std::cout << "Sim Data File opened successfully." << std::endl;
+            getline(myfile,header);
+
+            while (getline(myfile, line))
+            {
+                //11 columns: repeatNo, agentNo, agentID, agentType, agentTypeNo, time, fps, x, y, z, yaw
+                Record record;
+                fileLineCount++;
+                std::istringstream iss(line);
+                std::string token;
+
+                //repeat no. (int)
+                getline(iss, token, ',');
+                record.repeatNo = std::stoi(token);
+
+                //agent no.
+                getline(iss, token, ',');
+                record.agentNo = std::stoi(token);
+
+                //agent ID
+                getline(iss, token, ',');
+                record.agentID = std::stoi(token);
+
+                //agent type
+                getline(iss, record.agentType, ',');
+
+                //agent type no
+                getline(iss, token, ',');
+                record.agentTypeNo = std::stoi(token);
+
+                //simulation time
+                getline(iss, token, ',');
+                record.simTime = std::stod(token);
+
+                //simulation FPS
+                getline(iss, token, ',');
+                record.simFPS = std::stod(token);
+
+                //agent X, Y, Z & Yaw
+                getline(iss, token, ',');
+                record.simX = std::stod(token);
+                getline(iss, token, ',');
+                record.simY = std::stod(token);
+                getline(iss, token, ',');
+                record.simZ = std::stod(token);
+                getline(iss, token, ',');
+                record.simYaw = std::stod(token);
+
+                my_records.push_back(record);
+
+            }//while getline
+
+        } else {
+            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
+        } //if myfile is_open
+
+
+        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
+    }
+
+    void read_file_testbench(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
+    {
+        std::cout << "\n***********************"<< std::endl;
+        std::cout << " Reading Carla Data File "<< std::endl;
+        std::cout << "***********************"<< std::endl;
+
+        if (myfile.is_open())
+        {
+            if (diag) std::cout << "Testbench Data File opened successfully." << std::endl;
+            getline(myfile,header);
+
+            while (getline(myfile, line))
+            {
+                if (line.empty())
+                {
+                    if(diag) std::cout << "##read_file_testbench## empty line detected, skipping" << std::endl;
+                }
+                else
+                {
+                    //11 columns: testNo, repeatNo, agentNo, agentID, agentType, time, fps, x, y, z, yaw
+                    Record record;
+                    fileLineCount++;
+                    std::istringstream iss(line);
+                    std::string token;
+
+                    //testNo (int)
+                    getline(iss, token, ',');
+                    record.testNo = std::stoi(token);
+
+                    //repeatNo (int)
+                    getline(iss, token, ',');
+                    record.repeatNo = std::stoi(token);
+
+                    //agentNo. (int)
+                    getline(iss, token, ',');
+                    record.agentNo = std::stoi(token);
+
+                    //agentID
+                    getline(iss, token, ',');
+                    record.agentID = std::stoi(token);
+
+                    //agentType
+                    getline(iss, record.agentType, ',');
+
+                    //agent type no - TODO AG to implement ****
+                    getline(iss, token, ',');
+                    record.agentTypeNo = std::stoi(token);
+
+                    //simulation time
+                    getline(iss, token, ',');
+                    record.simTime = std::stod(token);
+
+                    //simulation FPS
+                    getline(iss, token, ',');
+                    record.simFPS = std::stod(token);
+
+                    //agent X, Y, Z & Yaw
+                    getline(iss, token, ',');
+                    record.simX = std::stod(token);
+                    getline(iss, token, ',');
+                    record.simY = std::stod(token);
+                    getline(iss, token, ',');
+                    record.simZ = std::stod(token);
+                    getline(iss, token, ',');
+                    record.simYaw = std::stod(token);
+
+                    my_records.push_back(record);
+                }
+
+            }//while getline
+
+        } else {
+            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
+        } //if myfile is_open
+
+
+        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
+    }
+
+};
+
+
+int main()
+{
+
+    // Set the diagnotics level for the terminal
+//    bool verbose = true;
+//    bool diag = true;
+    bool verbose = false;
+    bool diag = false;
+    double pi = 3.14159265359;
+
+
+    std::cout << "**************************" << std::endl;
+    std::cout << "*   postGIS Interface    *" << std::endl;
+    std::cout << "**************************\n" << std::endl;
+
+    //Connect to the database options: <greg, severin>
+    char userID[] = "greg";
+    //char userID[] = "severin";
+    //char userID[] = "dockerTest";
+
+    QSqlDatabase db = db_connect(userID);
+    QSqlQueryModel model; //create model for queries
+
+    //create database tables
+    QString schema="agents";
+    db_tables(model, schema, true);
+
+    //Open agent config file
+    //Ensure the file is in the local BUILD directory
+    std::ifstream myfile ("agent_config.txt");
+
+    //class for reading config
+    std::cout << "Starting agent config...";
+    AgentConfig cfg;
+    cfg.read_file(myfile, false);
+    std::vector<std::string> vect_typ= cfg.vect_typ;
+    std::vector<double> vect_wid= cfg.vect_wid;
+    std::vector<double> vect_len= cfg.vect_len;
+//    if(verbose){
+//        for (unsigned i=0; i< vect_len.size(); i++)
+//            if(diag) std::cout << vect_len.at(i)<<std::endl;
+//    }
+
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~ hard-coded values ~~~~~~~~~~~~~~~~~~~~~
+//    If you want to use hard-coded values for testing...
+//    //generated agents: AV, car, ped, cyclist
+//    int nS = 4;
+//    std::vector<std::string> agentsTypeList = {"AV","car","pedestrian","cyclist"};
+//    double agentsListLen[4] = {vect_len[0],vect_len[0],vect_len[2],vect_len[4]};
+//    double agentsListWid[4] = {vect_wid[0],vect_wid[0],vect_wid[2],vect_wid[4]};
+//    double agentPosLon[4] = {-2.6045037,
+//                             -2.6047037,
+//                             -2.6046007,  //ped
+//                             -2.6048037}; //cycl
+//    double agentPosLat[4] = {51.4553431,
+//                             51.4553931,
+//                             51.4553431,  //ped
+//                             51.4554031}; //cycl
+//    int agentYawList[4] = {-45,-17,0,-17};
+//    loop = agentsTypeList.size();
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~ sim-log values ~~~~~~~~~~~~~~~~~~~~~~
+
+    //If reading from the sim log
+    unsigned long loop;
+    readSimLog testLog;
+    std::string line;
+    //testLog.read_file(simLogFile, true); //for UE4 log
+//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_carla (simLogFile, true);//for carla logs
+    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true);//for carla testbench
+
+    //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
+    //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
+
+    // Add this to the log file to generate marks tht ensure the pgAdmin view stays centrered at the same location
+    //1, 1, 0,  marker1,		2, 0, 20, 1200, 1627, 0, 0
+    //1, 1, 1,  marker2,		2, 0, 20, 1200, 1733, 0, 0
+    //1, 1, 2,  marker3,		2, 0, 20, 1250, 1627, 0, 0
+    //1, 1, 3,  marker4,		2, 0, 20, 1250, 1723, 0, 0
+
+    //convert sim coord to lat/long
+    unsigned long nS = testLog.fileLineCount;
+    std::cout << "number of file lines in sim log ..." << nS <<std::endl;
+
+    int* agentsListID      = new int[nS];
+    std::vector<std::string> agentsListType;
+    int* agentsListTypeNo  = new int[nS];
+    double* agentsSimTime  = new double[nS];
+    double* agentsListLen  = new double[nS];
+    double* agentsListWid  = new double[nS];
+    double* agentPosY      = new double[nS];
+    double* agentPosX      = new double[nS];
+    double* agentYawList   = new double[nS];
+
+    for(unsigned long i=0;i<nS;i++){
+
+        unsigned long curr_ID;
+        curr_ID = testLog.my_records[i].agentTypeNo;
+        agentsListID[i] = testLog.my_records[i].agentID;
+        agentsListType.push_back(testLog.my_records[i].agentType);
+        agentsListTypeNo[i] = testLog.my_records[i].agentTypeNo;
+        agentsSimTime[i] = testLog.my_records[i].simTime;
+        agentPosX[i] = testLog.my_records[i].simX;
+        agentPosY[i] = -1 * testLog.my_records[i].simY;     //NB y-coordiante is revered here
+        agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
+        agentsListLen[i] = vect_len[curr_ID];
+        agentsListWid[i] = vect_wid[curr_ID];
+
+        if(verbose){
+            qDebug() << "curr_ID " << curr_ID;
+            std::cout << "agentsListID " << agentsListID[i] << std::endl;
+            std::cout << "agentsListType " << agentsListType[i]<< std::endl;
+            qDebug() << "agentsListTypeNo " << agentsListTypeNo[i];
+            qDebug() << "agentsSimTime " << agentsSimTime[i];
+
+            qDebug() << "agentPosX " << agentPosX[i];
+            qDebug() << "agentPosY " << agentPosY[i];
+            qDebug() << "agentYawList " << agentYawList[i];
+
+
+            qDebug() << "vect_len " << vect_len;
+            qDebug() << "vect_len[0] " << vect_len[0];
+            qDebug() << "vect_len[curr_ID] " << vect_len[curr_ID];
+            qDebug() << "testLog.my_records[i].simYaw " << testLog.my_records[i].simYaw;
+            qDebug() << "agentYawList[i] " << agentYawList[curr_ID];
+         }
+    }
+    loop = nS;
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~ add sim data to database ~~~~~~~~~~~~~~~~~~
+    // Map Integration ----------------------------------------
+    std::cout << "\n*********************"<< std::endl;
+    std::cout << " OSM Map Integration "<< std::endl;
+    std::cout << "*********************"<< std::endl;
+
+    for (unsigned long sc=0;sc<loop;sc++)
+    {
+        if(verbose) std::cout << "looping sc=" <<  sc << std::endl;
+
+        //Map Integration and offset management
+        //-2.6061375,51.4561091 position of clifton triangle junction
+        // need to set SRID
+        // need to give agents offset wrt map locale
+        // must be a reference in the map file that we can use to give the correct offset?
+
+        // from the triangle.OSM map we find:
+        //double minlon = -2.6079546,minlat = 51.4566831;
+        //double minlon = -2.6065037, minlat = 51.4560631;
+
+        //double minlon = -2.500172, minlat = 51.489233; //For clifton triangle
+//        double minlon = -2.499825, minlat = 51.489065; //for Double Mini_Roundabout
+        double minlon = -2.499825, minlat = 51.489030; //for testB
+//        double minlon = -2.520524, minlat = 51.505532; //for CrossRoad test
+        //double minlon = agentPosLon[sc];
+        //double minlat = agentPosLat[sc];
+
+        //        //double ag_len = 3.5, ag_wid = 1.6;
+        //        double ag_len = agentsListLen[sc];
+        //        double ag_wid = agentsListWid[sc];
+
+        //        // calculate shape coordiantes from posX/Y and yaw
+        //        double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
+        //        double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
+        //        double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
+        //        double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+        //        if(diag){
+        //            qDebug() << "#OSM Initial Coords# x1" << x1 << "y1" << y1;
+        //            qDebug() << "#OSM Initial Coords# x2" << x2 << "y2" << y2;
+        //            qDebug() << "#OSM Initial Coords# x3" << x3 << "y3" << y3;
+        //            qDebug() << "#OSM Initial Coords# x4" << x4 << "y4" << y4;
+        //        }
+
+        //get rotated coordinates
+        double *rc;
+        if(verbose){
+            qDebug() << " agentsListLen = "     << agentsListLen[sc] <<
+                        "\n agentsListWid = "   << agentsListWid[sc] <<
+                        "\n agentPosX = "       << agentPosX[sc] <<
+                        "\n agentPosX = "       << agentPosX[sc] <<
+                        "\n agentPosX = "       << agentPosX[sc] <<
+                        "\n agentPosY = "       << agentPosY[sc] <<
+                        "\n agentYawList = "    << agentYawList[sc];
+        }
+        bool rad_format=true;
+        rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], rad_format, diag);
+        double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
+
+        if(verbose){
+            qDebug() << "#OSM Update Position# x1" << x1 << "y1" << y1; //xy vals are truncated losing precision
+            qDebug() << "#OSM Update Position# x2" << x2 << "y2" << y2; //TODO
+            qDebug() << "#OSM Update Position# x3" << x3 << "y3" << y3; // use formatted strings
+            qDebug() << "#OSM Update Position# x4" << x4 << "y4" << y4;
+        }
+
+        //Note x is longitude and y is latitude for the postGIS functions that use lat/long directly
+
+        double latMid = 51.582838; //use this as rough approximation but could do better for big maps >60 miles
+        double m_per_deg_lat = 111132.92 - 559.82*cos(2*latMid*pi/180) + 1.175*cos(4*latMid*pi/180) - 0.0023*cos(6*latMid*pi/180);
+        double m_per_deg_lon = 111412.84*cos(latMid*pi/180) - 93.5*cos(3*latMid*pi/180) + 0.118*cos(5*latMid*pi/180);
+        if(verbose) std::cout << "m_per_deg_lat = " << m_per_deg_lat <<"\n";
+        if(verbose) std::cout << "m_per_deg_lon = " << m_per_deg_lon <<"\n";
+
+        //convert and offset the lat & lon
+        x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
+        x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
+        x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
+        x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
+        if(verbose){
+                qDebug() << "#OSM Lat/Lon Transform# x1" << x1 << "y1" << y1;
+                qDebug() << "#OSM Lat/Lon Transform# x2" << x2 << "y2" << y2;
+                qDebug() << "#OSM Lat/Lon Transform# x3" << x3 << "y3" << y3;
+                qDebug() << "#OSM Lat/Lon Transform# x4" << x4 << "y4" << y4;
+        }
+
+        // build string
+        int SRID = 4326;
+        //double sim_time=0;
+        QString qs, q1, q2, q3, q4, qAT;
+        q1 = "INSERT INTO "+schema+".status (";
+        q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
+        //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
+        qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
+        q3 = ", ST_GeomFromText('POLYGON((";
+        q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
+                        arg(x1,10,'f',7).arg(y1,10,'f',7).arg(x2,10,'f',7).arg(y2,10,'f',7).
+                        arg(x3,10,'f',7).arg(y3,10,'f',7).arg(x4,10,'f',7).arg(y4,10,'f',7).arg(SRID);
+        qs = q1 + q2 + qAT + q3 + q4;
+
+        // send string
+        if(verbose) qDebug() << "#update_agent_shape# QString: " << qs;
+        model.setQuery(qs);
+        if (model.lastError().isValid())
+                qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
+        if(verbose) qDebug() << "#update_agent_shape# agent shape update";
+    }
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+// ~~~~~~~~~~~~~~~~~~~~ Import the OSM data from file ~~~~~~~~~~~~~~~~~~
+
+    //    read in the OSM file here
+    //    Execute the following code in a terminal, e.g.
+    //    osm2pgsql -d postgis_in_action -H localhost -U postgres -P 5432 -S
+    // /usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm
+
+    // Not tested but should work
+    //std::string str;
+    //str = "osm2pgsql -d postgis_in_action -H localhost -U postgres -P 5432 -S "
+    //      "/usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm";
+    //const char *command = str.c_str();
+    //system(command);
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+// ~~~~~~~~~~~~~~~~~~~~ import map geoJSON ~~~~~~~~~~~~~~~~~~~~~
+
+    //TODO
+
+    // run this command
+    // ogr2ogr -f "PGDump" test.sql "loop_geo.geojson" -oo NAME=agents
+    // Open the file and paste into pgAdmin SQL query tool
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+// ~~~~~~~~~~~~~~~~~~~~ select only buildings data from OSM ~~~~~~~~~~~~~~~~~~
+
+//    //Select the agent(s) to test against
+//        insert into agents.map_test (agent_id, asr_geom)
+//        SELECT agent_id, geom
+//        FROM agents.status
+
+//    //Off-road or building collision test
+//        insert into agents.assertions (agent_id, sim_time, asr_id, asr_result)
+//        select g3.agent_id, 0 AS sim_time, 3 AS asr_id, ST_Overlaps(g1.asr_geom,g2.asr_geom) AS asr_result
+//        FROM agents.map_test g3, agents.map_test g1, agents.map_test g2
+//        WHERE g1.agent_id = 9 AND g2.agent_id != 9 --g1.sim_time = %1 AND g2.sim_time = %1
+//        limit 10
+
+// ~~~~~~~~~~~~~~~~~~~~ MAP_TEST ~~~~~~~~~~~~~~~~~~
+
+    // Create table for map polygons used for assertion testing
+    QString sql_string;
+    sql_string = "DROP TABLE IF EXISTS "+schema+".map_test";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "map_test table deleted...";
+    sql_string = "create table "+schema+".map_test (agent_id int, sim_time float, "
+                                        "PRIMARY KEY (agent_id, sim_time), agent_type int, geom geometry(polygon, 4326)) "; //
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# map_test table created...";
+
+    // Transfer the map dat removing unecessay polygons
+    sql_string = "insert into "+schema+".map_test (agent_id, sim_time, agent_type, geom)"
+                 "SELECT osm_id, 0 AS sim_time, 0 AS agent_type, ST_Transform(way,4326) "
+                 "FROM public.planet_osm_polygon as P "
+                 "where p.landuse is NULL "
+                 "and (p.amenity <> 'university' OR p.amenity is null) "
+                 "and (p.amenity <> 'hospital' OR p.amenity is null) "
+                 "and (p.amenity <> 'parking' OR p.amenity is null) "
+                 "and (p.amenity <> 'school' OR p.amenity is null) "
+                 "and (p.leisure <> 'recreation_ground' OR p.leisure is null)";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# map-transfer complete...";
+
+    // Insert the agents into the map_test table
+    sql_string = "insert into "+schema+".map_test (agent_id, agent_type, sim_time, geom) "
+                                       "SELECT agent_id, agent_type, sim_time, geom FROM "+schema+".status";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# map-transfer complete...";
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // Add roadrunner curb location to map - this doesn't work without conversion to polygon, better to use ST_Boundary on line string
+    //    insert into agents.map_test (agent_id, sim_time, agent_type, geom)
+    //    select ogc_fid AS agent_id, 0 AS sim_time, 80 AS agent_type,
+    //        st_makepolygon(st_geomfromtext(st_astext(wkb_geometry))) AS geom
+    //    from agents.loop_geo as WG
+    //    where WG.lanetype = 'Curb'
+/*
+    // Identify if AV has crossed Curb boundary as asserion
+        DROP TABLE IF EXISTS agents.combo_map
+        create table agents.combo_map (id SERIAL primary key, agent_id int, geom geometry)
+        insert into agents.combo_map (agent_id, geom)
+        select ogc_fid AS agent_id, wkb_geometry AS geom
+        from agents.loop_geo
+        where lanetype = 'Curb'
+
+    //then do this
+        insert into agents.combo_map (agent_id, geom)
+        select agent_id, geom
+        from agents.map_test
+        where sim_time = 12.5
+
+    //then check curb mounting with this
+        select g2.agent_id, st_crosses(g1.geom, g2.geom)
+        from agents.combo_map g1, agents.combo_map g2
+        where g1.agent_id=189 and g2.agent_id != 189
+
+    //or run animation by doing
+        DROP TABLE IF EXISTS agents.combo_map
+        create table agents.combo_map (id SERIAL primary key, sim_time float, agent_id int, geom geometry )
+        insert into agents.combo_map (sim_time, agent_id, geom)
+                select -1 AS sim_time, ogc_fid AS agent_id, wkb_geometry AS geom
+                from agents.loop_geo
+                where lanetype = 'Curb'
+        insert into agents.combo_map (sim_time, agent_id, geom)
+                select sim_time, agent_id, geom
+                from agents.map_test
+
+    //insert some cornering agents to centre the view on the DMR
+
+
+*/
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// For WP4 Demo - using test003.txt
+//select * FROM agents.map_test as g1
+//where
+//((g1.sim_time = 24.0) and ((g1.agent_id = 100) OR (g1.agent_id = 102) OR (g1.agent_id = 99) OR (g1.agent_id = 146) OR (g1.agent_id = 123)
+//OR (g1.agent_id = 111) OR (g1.agent_id = 113)))
+//OR ((g1.sim_time = 0) and ((g1.agent_id = 550508837) OR (g1.agent_id = 550508846) OR (g1.agent_id = 551154786)))
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// For MO Demo - testA TEST_A_OUTPUT_Markers.txt
+//    Use this and iterate the time to show the vehicles moving
+//    set AV to agent_id 74 in assertions and set sd to 0.000007 in the asr_02 call
+//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and ((g1.agent_id = 74) OR (g1.agent_id = 75) OR (g1.agent_id = 76)))
+//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR (g1.agent_id = 2) OR  (g1.agent_id > 76)))
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// For MO Demo - testC2 TEST_C2_crash_OUTPUT.txt
+//    Use this and iterate the time to show the vehicles moving
+//    Set AV to agent_id 32,
+//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and ((g1.agent_id = 32) OR (g1.agent_id = 33) OR (g1.agent_id = 34) OR (g1.agent_id = 35) OR (g1.agent_id = 36) OR (g1.agent_id = 37)))
+//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR (g1.agent_id = 2) OR (g1.agent_id = 3) OR  (g1.agent_id > 37)))
+
+
+
+
+
+    // ASSERION TESTING ----------------------------------------
+    std::cout << "\n*********************"<< std::endl;
+    std::cout << "      WP4 DEMO        "<< std::endl;
+    std::cout << "*********************"<< std::endl;
+
+//    SELECT g2.agent_id, g2.sim_time, 2 AS asr_id,
+//    -- ST_Distance(g1.geom,g2.geom) < 0.00001,
+//    ST_Distance(g1.geom::geography,g2.geom::geography),
+//    ST_Distance(g1.geom::geography,g2.geom::geography) < 1.5
+//    AS asr_result
+//    FROM agents.status g1, agents.status g2--, public.dmr_uk_fit p1
+//    WHERE g1.agent_id = 100 AND g2.agent_id != 100 AND g1.sim_time = 24.0 AND g2.sim_time = 24.0
+//    -- AND g3.sim_time = 24.0
+
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~ ASSERION TESTING ~~~~~~~~~~~~~~~~~~~~~
+    // ASSERION TESTING ----------------------------------------
+    std::cout << "\n*********************"<< std::endl;
+    std::cout << "  Assertion Testing  "<< std::endl;
+    std::cout << "*********************"<< std::endl;
+
+    // Assertion implementation
+    double sim_timer =2.0;
+    timestamp_t t0 = get_timestamp();
+
+    for(unsigned long jj=0;jj<110;jj++)
+    {
+        if(verbose) std::cout << "sim time is " << sim_timer << std::endl;
+
+        //check assertions
+        asr_01(model, schema, sim_timer);
+        asr_02(model, schema, sim_timer, 0.00001, 2, true); //for some reason the default values are not being read, have to declare them here
+           //Add assertion to check buildings collision
+           //Add assertion for pavement checking
+        sim_timer = sim_timer + 0.1;
+    }
+
+    // stop timer
+    timestamp_t t1 = get_timestamp();
+    double secs = (t1 - t0) / 1000000.0;
+    if(diag) std::cout << "assertion checking time is :" << secs<<"s \n";
+
+
+    //read traffic light positions and use in assertions TODO
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    qDebug() << "closing connection" << endl;
+    db.close();
+    return 0;
+}

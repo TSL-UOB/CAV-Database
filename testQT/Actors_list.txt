@@ -1,0 +1,7 @@
+agentType, length, width, height, description 
+walker.pedestrian.0001, 0.5, 0.3, 1.8, adult male
+walker.pedestrian.0001, 0.5, 0.3, 1.7, adult female
+walker.pedestrian.0001, 0.3, 0.2, 1, child male
+walker.pedestrian.0001, 0.3, 0.2, 1, child female
+other.pushchair.0001, 1, 0.5, 1, pushcahir
+other.trunki.0001, 1, 0.2, 0.5, trunki

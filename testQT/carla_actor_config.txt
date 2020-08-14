@@ -1,0 +1,9 @@
+# agentType, 			shape,	width,	length
+vehicle.tesla.model3, 		rect,	
+vehicle.mercedes-benz.coupe,	rect,
+walker.pedestrian.0001,		circ,
+xxx.carla.pushchair,		rect,
+xxx.carla.bicycle		rect,	
+xxx.carla.cyclist		rect,
+xxx.carla.trunki		rect,
+
