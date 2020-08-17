@@ -389,8 +389,6 @@ void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, s
         //    qDebug() << sum_time/(loops * nA);
     }
 }
-
-
 class AgentConfig
 {
     // Use the index to access agent types, modify the agent_config.txt to change
@@ -467,11 +465,9 @@ public: std::vector<std::string> vect_typ;
             }
         }
 };
-
-//read sim data file
-
 class readSimLog
 {
+//read sim data file
 
 public:
         std::ifstream myfile;   //filename for the log
@@ -558,6 +554,12 @@ public:
 
             while (getline(myfile, line))
             {
+                if (line.empty())
+                {
+                    if(diag) std::cout << "##read_file_testbench## empty line detected, skipping" << std::endl;
+                }
+                else
+                {
                 //11 columns: repeatNo, agentNo, agentID, agentType, agentTypeNo, time, fps, x, y, z, yaw
                 Record record;
                 fileLineCount++;
@@ -602,6 +604,7 @@ public:
                 record.simYaw = std::stod(token);
 
                 my_records.push_back(record);
+                }
 
             }//while getline
 
@@ -694,15 +697,12 @@ public:
 
 };
 
-
 int main()
 {
 
-    // Set the diagnotics level for the terminal
-//    bool verbose = true;
-//    bool diag = true;
-    bool verbose = false;
-    bool diag = false;
+//    Set the diagnotics level for the terminal
+//    bool verbose = true; bool diag = true;
+    bool verbose = false; bool diag = false;
     double pi = 3.14159265359;
 
 
@@ -719,7 +719,7 @@ int main()
     QSqlQueryModel model; //create model for queries
 
     //create database tables
-    QString schema="agents";
+    QString schema="simdata";
     db_tables(model, schema, true);
 
     //Open agent config file
@@ -737,6 +737,8 @@ int main()
 //        for (unsigned i=0; i< vect_len.size(); i++)
 //            if(diag) std::cout << vect_len.at(i)<<std::endl;
 //    }
+    for (unsigned i=0; i< vect_len.size(); i++)
+        std::cout << vect_len.at(i)<<std::endl;
 
 
 
@@ -769,8 +771,8 @@ int main()
     readSimLog testLog;
     std::string line;
     //testLog.read_file(simLogFile, true); //for UE4 log
-//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_carla (simLogFile, true);//for carla logs
-    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true);//for carla testbench
+    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true);//for carla logs
+//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true);//for carla testbench
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
@@ -917,6 +919,11 @@ int main()
                 qDebug() << "#OSM Lat/Lon Transform# x3" << x3 << "y3" << y3;
                 qDebug() << "#OSM Lat/Lon Transform# x4" << x4 << "y4" << y4;
         }
+//        double test_data = 7.3993274554444625e-06;
+//        double out_lon = m_per_deg_lon * test_data;
+//        double out_lat = m_per_deg_lat * test_data;
+//        qDebug() << "###test_data: out_lon out_lat" << out_lon << ","<< out_lat;
+
 
         // build string
         int SRID = 4326;
@@ -1118,18 +1125,27 @@ int main()
     std::cout << "*********************"<< std::endl;
 
     // Assertion implementation
-    double sim_timer =2.0;
+    double sim_timer = 0.1;
+    double sim_time_max = nS;
     timestamp_t t0 = get_timestamp();
 
-    for(unsigned long jj=0;jj<110;jj++)
+    for(unsigned long time=0;time<sim_time_max;time++) //TODO read the sim log time limits
     {
         if(verbose) std::cout << "sim time is " << sim_timer << std::endl;
 
         //check assertions
-        asr_01(model, schema, sim_timer);
-        asr_02(model, schema, sim_timer, 0.00001, 2, true); //for some reason the default values are not being read, have to declare them here
-           //Add assertion to check buildings collision
-           //Add assertion for pavement checking
+        // need to define/find the target AV bu ID
+        int target_actorID = 116;
+
+        //asr_01(model, schema, sim_timer);
+        //use asr_02 for bespoke hazard distance
+        double near_miss_dist = 0.5; //distance for geography needs to be in meters
+        double collision_dist = 0.05; //distance for geography needs to be in meters
+        //asr_02(model, schema, sim_timer, haz_dist, 2, true); //for some reason the default values are not being read, have to declare them here
+        //distance_based(model,schema, target_actorID, sim_timer, near_miss_dist, 1, diag);
+        //distance_based(model,schema, target_actorID, sim_timer, collision_dist, 2, diag);
+        distance_based(model,  schema, target_actorID,  sim_timer, near_miss_dist, collision_dist, diag);
+
         sim_timer = sim_timer + 0.1;
     }
 

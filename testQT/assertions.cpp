@@ -49,8 +49,8 @@ void asr_02(QSqlQueryModel& model, QString schema, double sim_time, double sd=0.
     QString qs, q1, q2, q3, q4;
     q1 = "INSERT INTO "+schema+".assertions (agent_id, sim_time, asr_id, asr_result) SELECT ";
     q2 = QStringLiteral("g2.agent_id, g2.sim_time, %1 AS asr_id, "
-//                        "ST_Distance(g1.geom::geography,g2.geom::geography) < %2 AS asr_result ").arg(asr_id).arg(sd);
-     "ST_Distance(g1.geom,g2.geom) > %2 AS asr_result ").arg(asr_id).arg(sd);
+        "ST_Distance(g1.geom::geography,g2.geom::geography) < %2 AS asr_result ").arg(asr_id).arg(sd);
+//     "ST_Distance(g1.geom,g2.geom) > %2 AS asr_result ").arg(asr_id).arg(sd);
     q3 = "FROM "+schema+".status g1, "+schema+".status g2 ";
     //q4 = QStringLiteral("WHERE g1.agent_type = 'AV' AND g2.agent_type != 'AV' AND g1.sim_time = %1 AND g2.sim_time = %1").arg(sim_time);
     q4 = QStringLiteral("WHERE g1.agent_id = 75 AND g2.agent_id != 75 AND g1.sim_time = %1 AND g2.sim_time = %1").arg(sim_time);
@@ -70,6 +70,23 @@ void asr_03(QSqlQueryModel& model, QString schema, double sim_time, double sd=1.
     q2 = QStringLiteral("g2.agent_id, g2.sim_time, %1 AS asr_id, ST_Distance(g1.geom,g2.geom) > %2 AS asr_result ").arg(asr_id).arg(sd);
     q3 = "FROM "+schema+".status g1, "+schema+".status g2 ";
     q4 = QStringLiteral("WHERE g1.agent_type = 'AV' AND g2.agent_type != 'AV' AND g1.sim_time = %1 AND g2.sim_time = %1").arg(sim_time);
+    qs = q1 + q2 + q3 + q4;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#asr_02# " << model.lastError()<<"\033[0m";
+    if(diag)
+        qDebug() << "#asr_02# " << qs;
+}
+
+// universal distance query, will return TRUE if actor is outside of limit (sd), i.e. no violation and FALSE if inside it.
+void distance_based(QSqlQueryModel& model, QString schema, int target_actorID, double sim_time, double d_nearmiss=0.5, double d_collision=0.01, bool diag=false){
+    // build string
+    QString qs, q1, q2, q3, q4;
+    q1 = "INSERT INTO "+schema+".assertions (agent_id, sim_time, near_miss, collision) SELECT ";
+    q2 = QStringLiteral("g2.agent_id, g2.sim_time,  "
+        "not ST_Distance(g1.geom::geography,g2.geom::geography) < %1 AS near_miss, not ST_Distance(g1.geom::geography,g2.geom::geography) < %2 AS collision ").arg(d_nearmiss).arg(d_collision);
+    q3 = "FROM "+schema+".status g1, "+schema+".status g2 ";
+    q4 = QStringLiteral("WHERE g1.agent_id = %1 AND g2.agent_id != %1 AND g1.sim_time = %2 AND g2.sim_time = %2").arg(target_actorID).arg(sim_time);
     qs = q1 + q2 + q3 + q4;
     model.setQuery(qs);
     if (model.lastError().isValid())
