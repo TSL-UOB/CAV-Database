@@ -65,7 +65,7 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "assertions table deleted...";
     sql_string = "create table "+schema+".assertions (id serial primary key, agent_id int, sim_time float, "
-                 "near_miss bool, collision bool)"; //
+                 "near_miss bool, collision bool, haz_distance float)"; //
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";

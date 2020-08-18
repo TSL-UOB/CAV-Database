@@ -82,10 +82,10 @@ void asr_03(QSqlQueryModel& model, QString schema, double sim_time, double sd=1.
 void distance_based(QSqlQueryModel& model, QString schema, int target_actorID, double sim_time, double d_nearmiss=0.5, double d_collision=0.01, bool diag=false){
     // build string
     QString qs, q1, q2, q3, q4;
-    q1 = "INSERT INTO "+schema+".assertions (agent_id, sim_time, near_miss, collision) SELECT ";
+    q1 = "INSERT INTO "+schema+".assertions (agent_id, sim_time, near_miss, collision, haz_distance) SELECT ";
     q2 = QStringLiteral("g2.agent_id, g2.sim_time,  "
-        "not ST_Distance(g1.geom::geography,g2.geom::geography) < %1 AS near_miss, not ST_Distance(g1.geom::geography,g2.geom::geography) < %2 AS collision ").arg(d_nearmiss).arg(d_collision);
-    q3 = "FROM "+schema+".status g1, "+schema+".status g2 ";
+        "not ST_Distance(g1.geom::geography,g2.geom::geography) < %1 AS near_miss, not ST_Distance(g1.geom::geography,g2.geom::geography) < %2 AS collision").arg(d_nearmiss).arg(d_collision);
+    q3 = ", ST_Distance(g1.geom::geography,g2.geom::geography) as haz_distance FROM "+schema+".status g1, "+schema+".status g2 ";
     q4 = QStringLiteral("WHERE g1.agent_id = %1 AND g2.agent_id != %1 AND g1.sim_time = %2 AND g2.sim_time = %2").arg(target_actorID).arg(sim_time);
     qs = q1 + q2 + q3 + q4;
     model.setQuery(qs);

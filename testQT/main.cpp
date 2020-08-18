@@ -1134,7 +1134,7 @@ int main()
         if(verbose) std::cout << "sim time is " << sim_timer << std::endl;
 
         //check assertions
-        // need to define/find the target AV bu ID
+        // need to define/find the target AV ID
         int target_actorID = 116;
 
         //asr_01(model, schema, sim_timer);
@@ -1154,6 +1154,11 @@ int main()
     double secs = (t1 - t0) / 1000000.0;
     if(diag) std::cout << "assertion checking time is :" << secs<<"s \n";
 
+    //now create summary stats for easy result interpretation
+//      select
+//      sum(case when near_miss is False then 1 else 0 end) as no_near_miss,
+//      sum(case when collision is False then 1 else 0 end) as no_collisions
+//      from simdata.assertions
 
     //read traffic light positions and use in assertions TODO
 
