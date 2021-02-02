@@ -480,7 +480,7 @@ public:
             int agentID;
             std::string agentType;
             int testNo, repeatNo, agentNo, agentTypeNo;
-            double simTime, simFPS, simX, simY, simZ, simYaw;
+            double simTime, simFPS, simX, simY, simZ, simYaw, velX, velY, velZ, speed, wallClock;
         };
         std::vector<Record> my_records;
 
@@ -556,7 +556,7 @@ public:
             {
                 if (line.empty())
                 {
-                    if(diag) std::cout << "##read_file_testbench## empty line detected, skipping" << std::endl;
+                    if(diag) std::cout << "##read_file_carla## empty line detected, skipping" << std::endl;
                 }
                 else
                 {
@@ -635,44 +635,39 @@ public:
                 }
                 else
                 {
-                    //11 columns: testNo, repeatNo, agentNo, agentID, agentType, time, fps, x, y, z, yaw
+                    //17 columns: 1 testNo ,2 repeatNo, 3 agentNo, 4 agentID, 5 agentType,
+                    //            6 agentTypeNo, 7/8/9/10 x, y, z, yaw,
+                    //            11/12/13 vel_x, vel_y, vel_z,
+                    //            14 speed, 15 time, 16 sim_time, 17 fps
                     Record record;
                     fileLineCount++;
                     std::istringstream iss(line);
                     std::string token;
 
-                    //testNo (int)
+                    //1 testNo (int)
                     getline(iss, token, ',');
                     record.testNo = std::stoi(token);
 
-                    //repeatNo (int)
+                    //2 repeatNo (int)
                     getline(iss, token, ',');
                     record.repeatNo = std::stoi(token);
 
-                    //agentNo. (int)
+                    //3 agentNo. (int)
                     getline(iss, token, ',');
                     record.agentNo = std::stoi(token);
 
-                    //agentID
+                    //4 agentID
                     getline(iss, token, ',');
                     record.agentID = std::stoi(token);
 
-                    //agentType
+                    //5 agentType
                     getline(iss, record.agentType, ',');
 
-                    //agent type no - TODO AG to implement ****
+                    //6 agent type no
                     getline(iss, token, ',');
                     record.agentTypeNo = std::stoi(token);
 
-                    //simulation time
-                    getline(iss, token, ',');
-                    record.simTime = std::stod(token);
-
-                    //simulation FPS
-                    getline(iss, token, ',');
-                    record.simFPS = std::stod(token);
-
-                    //agent X, Y, Z & Yaw
+                    //7/8/9/10 agent X, Y, Z & Yaw
                     getline(iss, token, ',');
                     record.simX = std::stod(token);
                     getline(iss, token, ',');
@@ -681,6 +676,31 @@ public:
                     record.simZ = std::stod(token);
                     getline(iss, token, ',');
                     record.simYaw = std::stod(token);
+
+                    //11/12/13  vel_x, vel_y, vel_z
+                    getline(iss, token, ',');
+                    record.velX = std::stod(token);
+                    getline(iss, token, ',');
+                    record.velY = std::stod(token);
+                    getline(iss, token, ',');
+                    record.velZ = std::stod(token);
+
+                    //14 speed
+                    getline(iss, token, ',');
+                    record.speed = std::stod(token);
+
+                    //15 time (cyclic simulation time)
+                    getline(iss, token, ',');
+                    record.simTime = std::stod(token);
+
+                    //16 sim_time (wallClock)
+                    getline(iss, token, ',');
+                    record.wallClock = std::stod(token);
+
+                    //17 simulation FPS
+                    getline(iss, token, ',');
+                    record.simFPS = std::stod(token);
+
 
                     my_records.push_back(record);
                 }
@@ -697,12 +717,21 @@ public:
 
 };
 
+//*********************************************************************
+//
+//                         M    A    I    N
+//
+//*********************************************************************
+
 int main()
 {
 
 //    Set the diagnotics level for the terminal
-//    bool verbose = true; bool diag = true;
-    bool verbose = false; bool diag = false;
+//    bool verbose = true;
+    bool verbose_check  = true;
+//    bool diag = true;
+    bool verbose = false;
+    bool diag = false;
     double pi = 3.14159265359;
 
 
@@ -727,7 +756,7 @@ int main()
     std::ifstream myfile ("agent_config.txt");
 
     //class for reading config
-    std::cout << "Starting agent config...";
+    std::cout << "Starting agent config...\n";
     AgentConfig cfg;
     cfg.read_file(myfile, false);
     std::vector<std::string> vect_typ= cfg.vect_typ;
@@ -771,8 +800,9 @@ int main()
     readSimLog testLog;
     std::string line;
     //testLog.read_file(simLogFile, true); //for UE4 log
-    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true);//for carla logs
-//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true);//for carla testbench
+    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
+//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla testbench
+//    std::ifstream simLogFile ("lboro_static_tests.txt");testLog.read_file_testbench (simLogFile, true);//for carla logs
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
@@ -804,14 +834,23 @@ int main()
         agentsListID[i] = testLog.my_records[i].agentID;
         agentsListType.push_back(testLog.my_records[i].agentType);
         agentsListTypeNo[i] = testLog.my_records[i].agentTypeNo;
-        agentsSimTime[i] = testLog.my_records[i].simTime;
+        if (not useCyclicTime){
+            agentsSimTime[i] = testLog.my_records[i].simTime; //**** if cyclic time gives primary key errors, use wall-clock
+            if(i==0)qDebug("Using standard time for sim data");
+        }
+        if(useCyclicTime){
+            agentsSimTime[i] = testLog.my_records[i].wallClock * 100; //x100 to include decimal in PK
+            if(i==0)qDebug("Using cyclical time for sim data");
+        }
         agentPosX[i] = testLog.my_records[i].simX;
         agentPosY[i] = -1 * testLog.my_records[i].simY;     //NB y-coordiante is revered here
-        agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
+//        agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
+        agentYawList[i] = testLog.my_records[i].simYaw;//********************************
         agentsListLen[i] = vect_len[curr_ID];
         agentsListWid[i] = vect_wid[curr_ID];
 
-        if(verbose){
+        //if(verbose and i<5){
+        if(verbose_check and i<5){
             qDebug() << "curr_ID " << curr_ID;
             std::cout << "agentsListID " << agentsListID[i] << std::endl;
             std::cout << "agentsListType " << agentsListType[i]<< std::endl;
@@ -821,7 +860,6 @@ int main()
             qDebug() << "agentPosX " << agentPosX[i];
             qDebug() << "agentPosY " << agentPosY[i];
             qDebug() << "agentYawList " << agentYawList[i];
-
 
             qDebug() << "vect_len " << vect_len;
             qDebug() << "vect_len[0] " << vect_len[0];
@@ -950,6 +988,9 @@ int main()
 
 
 // ~~~~~~~~~~~~~~~~~~~~ Import the OSM data from file ~~~~~~~~~~~~~~~~~~
+  std::cout << "\n*********************"<< std::endl;
+    std::cout << "      OSM IMPORT     "<< std::endl;
+    std::cout << "*********************"<< std::endl;
 
     //    read in the OSM file here
     //    Execute the following code in a terminal, e.g.
@@ -957,11 +998,14 @@ int main()
     // /usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm
 
     // Not tested but should work
-    //std::string str;
-    //str = "osm2pgsql -d postgis_in_action -H localhost -U postgres -P 5432 -S "
-    //      "/usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm";
-    //const char *command = str.c_str();
-    //system(command);
+    // check how to send password
+    // chack file name and location
+    std::string str;
+    str = "osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S "
+          "/usr/local/share/osm2pgsql/default.style --hstore ~/git/CAV-Database/testQT/DMR.osm";
+    const char *command = str.c_str();
+    system(command);
+    if(diag) qDebug() << "OSM map data imported...";
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1017,6 +1061,10 @@ int main()
                  "and (p.amenity <> 'parking' OR p.amenity is null) "
                  "and (p.amenity <> 'school' OR p.amenity is null) "
                  "and (p.leisure <> 'recreation_ground' OR p.leisure is null)";
+//    sql_string = "insert into "+schema+".map_test (agent_id, sim_time, agent_type, geom)"
+//                 "SELECT osm_id, 0 AS sim_time, 0 AS agent_type, ST_Transform(way,4326) "
+//                 "FROM public.planet_osm_polygon as P ";
+
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
@@ -1125,7 +1173,7 @@ int main()
     std::cout << "*********************"<< std::endl;
 
     // Assertion implementation
-    double sim_timer = 0.1;
+    double sim_timer = 0.1; //TODO need to read this from sim log
     double sim_time_max = nS;
     timestamp_t t0 = get_timestamp();
 
@@ -1154,16 +1202,71 @@ int main()
     double secs = (t1 - t0) / 1000000.0;
     if(diag) std::cout << "assertion checking time is :" << secs<<"s \n";
 
-    //now create summary stats for easy result interpretation
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Summary Stats ----------------------------------------
+    std::cout << "\n*********************"<< std::endl;
+    std::cout << "    Summary Stats    "<< std::endl;
+    std::cout << "*********************"<< std::endl;
+
+//      now create summary stats for easy result interpretation
 //      select
 //      sum(case when near_miss is False then 1 else 0 end) as no_near_miss,
 //      sum(case when collision is False then 1 else 0 end) as no_collisions
 //      from simdata.assertions
 
-    //read traffic light positions and use in assertions TODO
+//      TODO maybe add Experiment number to the log file to easily summarise
+//      between different types and actors?
+
+    // Create table for Stats
+    sql_string = "DROP TABLE IF EXISTS "+schema+".stats";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "stats table deleted...";
+    sql_string = "create table "+schema+".stats (exp_no int primary key, hazard_actor varchar(255), orientation float, "
+                 "pod_route varchar(255), grid_posn_w float, no_near_miss int, no_collision int)"; //
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# assertions table created...";
+
+    // summarise experiment data
+    //      sum(case when near_miss is False then 1 else 0 end) as no_near_miss,
+    //      sum(case when collision is False then 1 else 0 end) as no_collisions
+    //      from simdata.assertions
+
+    // ExpNo - from log
+    // HazardActor - from log
+    // Orientation - from log
+    // PodRoute - make entry
+    // GridPosn  - make entry
+    // NoNearMiss/Collison - from SQL
+
+//    // build string
+//    QString qs, q1, q2, q3;
+//    q1 = "INSERT INTO "+schema+".stats (exp_no, hazard_actor, orientation, pod_route, grid_posn_w, no_near_miss, no_collision) SELECT ";
+//    q2 = QStringLiteral("1 AS exp_no, 'adult' as hazard_actor, 45 AS orientation, "
+//        "'left 45' AS pod_route, -3 AS grid_posn_w, "
+//        " sum(case when near_miss is False then 1 else 0 end) as no_near_miss, "
+//     "sum(case when collision is False then 1 else 0 end) as no_collisions ");
+//    q3 = "FROM "+schema+".assertions ";
+//    qs = q1 + q2 + q3 ;
+//    model.setQuery(qs);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#asr_02# " << model.lastError()<<"\033[0m";
+//    if(diag)
+//        qDebug() << "#asr_02# " << qs;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // TODO - automate file reading and take exp number from the log file entry
+    // TODO AG get pod route and grid position from log or make new entry
+    // TODO automate the reading batch files
+    // TODO change all table deletes to insert updates?
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 
     qDebug() << "closing connection" << endl;
