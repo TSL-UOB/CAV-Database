@@ -10,6 +10,7 @@
 #include <vector>
 #include <iomanip> //setprecision
 #include "uepostgis.h"
+#include <tuple>
 
 typedef  long timestamp_t;
 static timestamp_t
@@ -259,6 +260,107 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
 
     return return_coordiantes;
 }
+
+std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
+{
+    x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
+    x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
+    x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
+    x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
+    return{x1,x2,x3,x4,y1,y2,y3,y4};
+}
+
+double * zone_coords(double braking_distance, double velocity, double ag_len, double ag_wid, double posX, double posY, double yaw, QString zone_type, bool rad_format=true, bool diag=true)
+{
+//Get rotated coords from agent pos and shape
+    static double return_coordiantes[10];
+    double precondition_time = 1;
+    double zone_len;
+
+    //yaw to radians conversion if necessary
+    double rads;
+    if(rad_format){
+        rads = yaw; //no conversion required from UE4
+    }else{
+        rads = yaw * 3.141592653 / 180;
+    }
+
+
+    // if 'zone' is braking then length is braking distance
+    if(zone_type=="braking"){
+    zone_len = braking_distance;
+    }
+    // ...else length is based on precondition zone length ~1s thinking time
+    if(zone_type=="precondition"){
+    zone_len = velocity * precondition_time;
+    }
+
+    // front of the vehicle are x/y 2/3
+
+
+    // calculate shape coordiantes from posX/Y realtive to (0,0) at the centre
+    double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
+    double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
+    double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
+    double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+
+    //use rotationmatrix to get rotated coordinates
+    double x1r, y1r, x2r, y2r, x3r, y3r, x4r, y4r;
+    std::tie(x1r, y1r) = rotate_coords(x1, y1, rads, false); //unpack tuple elements
+    std::tie(x2r, y2r) = rotate_coords(x2, y2, rads, false); //unpack tuple elements
+    std::tie(x3r, y3r) = rotate_coords(x3, y3, rads, false); //unpack tuple elements
+    std::tie(x4r, y4r) = rotate_coords(x4, y4, rads, false); //unpack tuple elements
+    if(diag){
+        qDebug() << "#update_agent_shape# x1r" << x1r << "y1r" << y1r;
+        qDebug() << "#update_agent_shape# x2r" << x2r << "y2r" << y2r;
+        qDebug() << "#update_agent_shape# x3r" << x3r << "y3r" << y3r;
+        qDebug() << "#update_agent_shape# x4r" << x4r << "y4r" << y4r;
+    }
+
+    // add the zone
+    double Zx1, Zx4;
+    double Zx2, Zx3;
+    double Zy1, Zy2;
+    double Zy3, Zy4;
+
+    // Adjust the zone start locations to the end of previous
+    if (zone_type=="braking"){
+        //zone_start = end of vehcile shape
+        Zx1=x2r; Zy1=y2r;
+        Zx4=x3r; Zy4=y3r;
+        //zone_end = zone_start + braking_distance
+        Zx2 = x2r + (braking_distance * cos(rads));
+        Zy2 = y2r + (braking_distance * sin(rads));
+        Zx3 = x3r + (braking_distance * cos(rads));
+        Zy3 = y3r + (braking_distance * sin(rads));
+    }
+    if(zone_type=="precondition"){
+        //zone_start = end of the braking zone
+        //zone_end = zone_start + velocity * precondition_time
+    }
+
+    // Add the original position to the coordinates to transform back to map coordinates
+    //x1=x1r+posX; x2=x2r+posX; x3=x3r+posX; x4=x4r+posX;
+    //y1=y1r+posY; y2=y2r+posY; y3=y3r+posY; y4=y4r+posY;
+
+    // add the original coord to the zone
+    x1=Zx1+posX; x2=Zx2+posX; x3=Zx3+posX; x4=Zx4+posX;
+    y1=Zy1+posY; y2=Zy2+posY; y3=Zy3+posY; y4=Zy4+posY;
+
+    return_coordiantes[0] = x1;
+    return_coordiantes[1] = x2;
+    return_coordiantes[2] = x3;
+    return_coordiantes[3] = x4;
+    return_coordiantes[4] = y1;
+    return_coordiantes[5] = y2;
+    return_coordiantes[6] = y3;
+    return_coordiantes[7] = y4;
+
+    return return_coordiantes;
+}
+
+
+
 void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
 {
     //call the coordinates
@@ -396,10 +498,11 @@ class AgentConfig
     // INDEX 0=AV, 1=Car, 2=Ped, 3=hgv, 4=cyclist
 
 public: std::vector<std::string> vect_typ;
-        std::vector<double> vect_wid, vect_len;
+        std::vector<double> vect_wid, vect_len, vect_amax;
         std::string cfg_typ;
         std::string cfg_wid;
         std::string cfg_len;
+        std::string cfg_amax;
         std::string header;
 
         void read_file(std::ifstream& myfile, bool diag=true)
@@ -414,6 +517,7 @@ public: std::vector<std::string> vect_typ;
                 getline(myfile,cfg_typ);
                 getline(myfile,cfg_wid);
                 getline(myfile,cfg_len);
+                getline(myfile,cfg_amax);
             } else {
                 qDebug() << "\033[0;31m#AgentConfig.read_file# ERROR: Config File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
             }
@@ -423,8 +527,9 @@ public: std::vector<std::string> vect_typ;
             if(diag) std::cout << cfg_typ << std::endl;
             if(diag) std::cout << cfg_wid << std::endl;
             if(diag) std::cout << cfg_len << std::endl;
+            if(diag) std::cout << cfg_amax << std::endl;
 
-            std::stringstream ss_typ(cfg_typ), ss_wid(cfg_wid), ss_len(cfg_len);
+            std::stringstream ss_typ(cfg_typ), ss_wid(cfg_wid), ss_len(cfg_len), ss_amax(cfg_amax);
             std::string token;
 
             //Parse the type string
@@ -462,6 +567,19 @@ public: std::vector<std::string> vect_typ;
             if(diag){
                 for (unsigned i=0; i< vect_len.size(); i++)
                     if(diag) std::cout << vect_len.at(i)<<std::endl;
+            }
+
+
+            // Parse the a_max string
+            while (ss_amax >> kk)
+            {
+                vect_amax.push_back(kk);
+                if (ss_amax.peek() == ',')
+                    ss_amax.ignore();
+            }
+            if(diag){
+                for (unsigned i=0; i< vect_amax.size(); i++)
+                    if(diag) std::cout << vect_amax.at(i)<<std::endl;
             }
         }
 };
@@ -726,12 +844,13 @@ public:
 int main()
 {
 
-//    Set the diagnotics level for the terminal
-//    bool verbose = true;
+    // Set the diagnotics level for the terminal
+
     bool verbose_check  = true;
-//    bool diag = true;
     bool verbose = false;
     bool diag = false;
+    bool genDynamicShapes = true;
+
     double pi = 3.14159265359;
 
 
@@ -762,12 +881,14 @@ int main()
     std::vector<std::string> vect_typ= cfg.vect_typ;
     std::vector<double> vect_wid= cfg.vect_wid;
     std::vector<double> vect_len= cfg.vect_len;
-//    if(verbose){
-//        for (unsigned i=0; i< vect_len.size(); i++)
-//            if(diag) std::cout << vect_len.at(i)<<std::endl;
-//    }
-    for (unsigned i=0; i< vect_len.size(); i++)
+    std::vector<double> vect_amax= cfg.vect_amax;
+
+
+    // check config is being read correctly
+    if(verbose)for (unsigned i=0; i< vect_len.size(); i++){
         std::cout << vect_len.at(i)<<std::endl;
+        std::cout << vect_amax.at(i)<<std::endl;
+    }
 
 
 
@@ -800,9 +921,9 @@ int main()
     readSimLog testLog;
     std::string line;
     //testLog.read_file(simLogFile, true); //for UE4 log
-    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
+//    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
 //    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla testbench
-//    std::ifstream simLogFile ("lboro_static_tests.txt");testLog.read_file_testbench (simLogFile, true);//for carla logs
+    std::ifstream simLogFile ("lboro_static_tests.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
@@ -826,6 +947,7 @@ int main()
     double* agentPosY      = new double[nS];
     double* agentPosX      = new double[nS];
     double* agentYawList   = new double[nS];
+    double* agentSpeed     = new double[nS];
 
     for(unsigned long i=0;i<nS;i++){
 
@@ -846,6 +968,8 @@ int main()
         agentPosY[i] = -1 * testLog.my_records[i].simY;     //NB y-coordiante is revered here
 //        agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
         agentYawList[i] = testLog.my_records[i].simYaw;//********************************
+        agentSpeed[i]   = testLog.my_records[i].speed;
+
         agentsListLen[i] = vect_len[curr_ID];
         agentsListWid[i] = vect_wid[curr_ID];
 
@@ -983,6 +1107,86 @@ int main()
         if (model.lastError().isValid())
                 qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
         if(verbose) qDebug() << "#update_agent_shape# agent shape update";
+
+
+
+        // ~~~~~~~~~~~~~~~~~~~~ Dynamic Shape Generation ~~~~~~~~~~~~~~~
+        // generate dynamic shapes to help with  assertion checking
+        if(genDynamicShapes){
+//            std::cout << "\n**************************"<< std::endl;
+//            std::cout << " Dynamic Shape Generation "<< std::endl;
+//            std::cout << "**************************"<< std::endl;
+
+            // make a table for dynamic shapes
+            // check for and make a table called 'braking' and 'precondition'
+            // done in db_tables.cpp
+
+
+            // check if vehicle, type? use index of agent_config.txt
+            // 0=pod, 1=adult, 2=child, 3=AV, 4=cav, 5=hgv, 6=cyclist, 7=aygo - *************** check that CARLA logs write this correctly
+
+            // find speed and maximum deceleration, should be ~3 m/s^2
+            double maximum_deceleration = vect_amax.at(agentsListTypeNo[sc]);
+            double velocity = agentSpeed[sc];
+            double bearing = agentYawList[sc];
+
+            // determine the braking distance
+            double braking_distance = pow(velocity,2) / (2 * maximum_deceleration);
+            //if(sc<55)
+            //    qDebug() << "Dynamic Shape Generation# acc, v, d, theta: " << maximum_deceleration <<","<< velocity <<","<< braking_distance << bearing;
+
+            // might want to cut off d<0.01m?
+
+
+            // for each vehicle type, re-draw the polygon with delta-offset
+            double *zb;
+            QString zone = "braking";
+            zb = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag);
+            double x1=zb[0],x2=zb[1],x3=zb[2],x4=zb[3],y1=zb[4],y2=zb[5],y3=zb[6],y4=zb[7];
+
+//            //convert and offset the lat & lon
+//            x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
+//            x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
+//            x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
+//            x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
+
+            //convert to lat long
+            auto [x1,x2,x3,x4,y1,y2,y3,y4]=carla_to_geo(x1,x2,x3,x4,y1,y2,y3,y4,m_per_deg_lon,m_per_deg_lat, minlon, minlat);
+
+            // dump new zone coords in a table
+            int SRID = 4326;
+            QString qs, q1, q2, q3, q4, qAT;
+            q1 = "INSERT INTO "+schema+"."+zone+" (";
+            q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
+            //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
+            qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
+            q3 = ", ST_GeomFromText('POLYGON((";
+            q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
+                            arg(x1,10,'f',7).arg(y1,10,'f',7).arg(x2,10,'f',7).arg(y2,10,'f',7).
+                            arg(x3,10,'f',7).arg(y3,10,'f',7).arg(x4,10,'f',7).arg(y4,10,'f',7).arg(SRID);
+            qs = q1 + q2 + qAT + q3 + q4;
+
+            // send string
+            if(verbose) qDebug() << "#update_agent_shape# QString: " << qs;
+            model.setQuery(qs);
+            if (model.lastError().isValid())
+                    qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
+            if(verbose) qDebug() << "#update_agent_shape# agent shape update";
+
+
+        }
+
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+
+
+
+
+
     }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1144,9 +1348,6 @@ int main()
 //    Set AV to agent_id 32,
 //    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and ((g1.agent_id = 32) OR (g1.agent_id = 33) OR (g1.agent_id = 34) OR (g1.agent_id = 35) OR (g1.agent_id = 36) OR (g1.agent_id = 37)))
 //    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR (g1.agent_id = 2) OR (g1.agent_id = 3) OR  (g1.agent_id > 37)))
-
-
-
 
 
     // ASSERION TESTING ----------------------------------------
