@@ -212,7 +212,7 @@ void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_
     if(diag)
         qDebug() << "#update_agent_shape# agent shape update";
 }
-double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true)
+double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true, double scale = 1)
 {
 //Get rotated coords from agent pos and shape
     static double return_coordiantes[10];
@@ -225,12 +225,11 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
         rads = yaw * 3.141592653 / 180;
     }
 
-
     // calculate shape coordiantes from posX/Y and yaw
-    double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
-    double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
-    double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
-    double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+    double x1= -1. * scale * ag_len/2., x4 = -1. * scale * ag_len/2.;
+    double x2= +1. * scale * ag_len/2., x3 = +1. * scale * ag_len/2.;
+    double y1= -1. * scale * ag_wid/2., y2 = -1. * scale * ag_wid/2.;
+    double y3= +1. * scale * ag_wid/2., y4 = +1. * scale * ag_wid/2.;
 
     //use rotationmatrix to get rotated coordinates
     double x1r, y1r, x2r, y2r, x3r, y3r, x4r, y4r;
@@ -261,21 +260,54 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
     return return_coordiantes;
 }
 
-std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
+void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID, int agentsTypeNo, double SimTime, double * geo, int SRID = 4326, bool verbose=false)
 {
+    // dump new zone coords in a table
+    double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
+
+    //int SRID = 4326;
+    QString qs, q1, q2, q3, q4, qAT;
+    q1 = "INSERT INTO "+schema+"."+zone+" (";
+    q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
+    qAT =QStringLiteral("%1, %2, %3").arg(agentID).arg(agentsTypeNo).arg(SimTime);
+    q3 = ", ST_GeomFromText('POLYGON((";
+    q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
+                    arg(gx1,10,'f',7).arg(gy1,10,'f',7).arg(gx2,10,'f',7).arg(gy2,10,'f',7).
+                    arg(gx3,10,'f',7).arg(gy3,10,'f',7).arg(gx4,10,'f',7).arg(gy4,10,'f',7).arg(SRID);
+    qs = q1 + q2 + qAT + q3 + q4;
+    // send string
+    if(verbose) qDebug() << "#update_agent_shape# QString: " << qs;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+            qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
+    if(verbose) qDebug() << "#update_agent_shape# agent shape update";
+}
+
+//std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
+double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y2,double y3,double y4,double m_per_deg_lon,double m_per_deg_lat, double minlon, double minlat)
+{
+    static double return_coordiantes[10];
     x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
     x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
     x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
     x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
-    return{x1,x2,x3,x4,y1,y2,y3,y4};
+
+    return_coordiantes[0] = x1;
+    return_coordiantes[1] = x2;
+    return_coordiantes[2] = x3;
+    return_coordiantes[3] = x4;
+    return_coordiantes[4] = y1;
+    return_coordiantes[5] = y2;
+    return_coordiantes[6] = y3;
+    return_coordiantes[7] = y4;
+
+    return return_coordiantes;
 }
 
-double * zone_coords(double braking_distance, double velocity, double ag_len, double ag_wid, double posX, double posY, double yaw, QString zone_type, bool rad_format=true, bool diag=true)
+double * zone_coords(double braking_distance, double velocity, double ag_len, double ag_wid, double posX, double posY, double yaw, QString zone_type, bool rad_format=false, bool diag=true, double scale=1)
 {
 //Get rotated coords from agent pos and shape
     static double return_coordiantes[10];
-    double precondition_time = 1;
-    double zone_len;
 
     //yaw to radians conversion if necessary
     double rads;
@@ -285,24 +317,13 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
         rads = yaw * 3.141592653 / 180;
     }
 
-
-    // if 'zone' is braking then length is braking distance
-    if(zone_type=="braking"){
-    zone_len = braking_distance;
-    }
-    // ...else length is based on precondition zone length ~1s thinking time
-    if(zone_type=="precondition"){
-    zone_len = velocity * precondition_time;
-    }
-
     // front of the vehicle are x/y 2/3
 
-
     // calculate shape coordiantes from posX/Y realtive to (0,0) at the centre
-    double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
-    double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
-    double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
-    double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
+    double x1= -1. * ag_len*scale/2., x4 = -1. * ag_len*scale/2.;
+    double x2= +1. * ag_len*scale/2., x3 = +1. * ag_len*scale/2.;
+    double y1= -1. * ag_wid*scale/2., y2 = -1. * ag_wid*scale/2.;
+    double y3= +1. * ag_wid*scale/2., y4 = +1. * ag_wid*scale/2.;
 
     //use rotationmatrix to get rotated coordinates
     double x1r, y1r, x2r, y2r, x3r, y3r, x4r, y4r;
@@ -318,32 +339,38 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
     }
 
     // add the zone
-    double Zx1, Zx4;
-    double Zx2, Zx3;
-    double Zy1, Zy2;
-    double Zy3, Zy4;
+    double Zx1=0, Zx4=0; //rear of vehicle in x
+    double Zx2=0, Zx3=0; //front of vehicle in x
+    double Zy1=0, Zy4=0; //rear of vehicle in y
+    double Zy3=0, Zy2=0; //front of vehicle in y
 
     // Adjust the zone start locations to the end of previous
     if (zone_type=="braking"){
         //zone_start = end of vehcile shape
-        Zx1=x2r; Zy1=y2r;
-        Zx4=x3r; Zy4=y3r;
+        Zx1=x2r;
+        Zy1=y2r;
+        Zx4=x3r;
+        Zy4=y3r;
         //zone_end = zone_start + braking_distance
-        Zx2 = x2r + (braking_distance * cos(rads));
-        Zy2 = y2r + (braking_distance * sin(rads));
-        Zx3 = x3r + (braking_distance * cos(rads));
-        Zy3 = y3r + (braking_distance * sin(rads));
+        Zx2 = x2r + (braking_distance*scale * cos(rads));
+        Zy2 = y2r + (braking_distance*scale * sin(rads));
+        Zx3 = x3r + (braking_distance*scale * cos(rads));
+        Zy3 = y3r + (braking_distance*scale * sin(rads));
     }
     if(zone_type=="precondition"){
         //zone_start = end of the braking zone
+        Zx1=x2r + (braking_distance*scale * cos(rads));
+        Zy1=y2r + (braking_distance*scale * sin(rads));
+        Zx4=x3r + (braking_distance*scale * cos(rads));
+        Zy4=y3r + (braking_distance*scale * sin(rads));
         //zone_end = zone_start + velocity * precondition_time
+        Zx2 = Zx1 + (braking_distance*scale * cos(rads));
+        Zy2 = Zy1 + (braking_distance*scale * sin(rads));
+        Zx3 = Zx4 + (braking_distance*scale * cos(rads));
+        Zy3 = Zy4 + (braking_distance*scale * sin(rads));
     }
 
     // Add the original position to the coordinates to transform back to map coordinates
-    //x1=x1r+posX; x2=x2r+posX; x3=x3r+posX; x4=x4r+posX;
-    //y1=y1r+posY; y2=y2r+posY; y3=y3r+posY; y4=y4r+posY;
-
-    // add the original coord to the zone
     x1=Zx1+posX; x2=Zx2+posX; x3=Zx3+posX; x4=Zx4+posX;
     y1=Zy1+posY; y2=Zy2+posY; y3=Zy3+posY; y4=Zy4+posY;
 
@@ -923,7 +950,7 @@ int main()
     //testLog.read_file(simLogFile, true); //for UE4 log
 //    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
 //    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla testbench
-    std::ifstream simLogFile ("lboro_static_tests.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
+    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
@@ -1024,21 +1051,6 @@ int main()
         //double minlon = agentPosLon[sc];
         //double minlat = agentPosLat[sc];
 
-        //        //double ag_len = 3.5, ag_wid = 1.6;
-        //        double ag_len = agentsListLen[sc];
-        //        double ag_wid = agentsListWid[sc];
-
-        //        // calculate shape coordiantes from posX/Y and yaw
-        //        double x1= -1. * ag_len/2., x4 = -1. * ag_len/2.;
-        //        double x2= +1. * ag_len/2., x3 = +1. * ag_len/2.;
-        //        double y1= -1. * ag_wid/2., y2 = -1. * ag_wid/2.;
-        //        double y3= +1. * ag_wid/2., y4 = +1. * ag_wid/2.;
-        //        if(diag){
-        //            qDebug() << "#OSM Initial Coords# x1" << x1 << "y1" << y1;
-        //            qDebug() << "#OSM Initial Coords# x2" << x2 << "y2" << y2;
-        //            qDebug() << "#OSM Initial Coords# x3" << x3 << "y3" << y3;
-        //            qDebug() << "#OSM Initial Coords# x4" << x4 << "y4" << y4;
-        //        }
 
         //get rotated coordinates
         double *rc;
@@ -1051,8 +1063,9 @@ int main()
                         "\n agentPosY = "       << agentPosY[sc] <<
                         "\n agentYawList = "    << agentYawList[sc];
         }
-        bool rad_format=true;
-        rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], rad_format, diag);
+        bool rad_format=false;
+        double scale = 1; //drawing scale for geom
+        rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], rad_format, diag, scale);
         double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
 
         if(verbose){
@@ -1081,17 +1094,14 @@ int main()
                 qDebug() << "#OSM Lat/Lon Transform# x3" << x3 << "y3" << y3;
                 qDebug() << "#OSM Lat/Lon Transform# x4" << x4 << "y4" << y4;
         }
-//        double test_data = 7.3993274554444625e-06;
-//        double out_lon = m_per_deg_lon * test_data;
-//        double out_lat = m_per_deg_lat * test_data;
-//        qDebug() << "###test_data: out_lon out_lat" << out_lon << ","<< out_lat;
+
 
 
         // build string
         int SRID = 4326;
         //double sim_time=0;
         QString qs, q1, q2, q3, q4, qAT;
-        q1 = "INSERT INTO "+schema+".status (";
+        q1 = "INSERT INTO "+schema+".actors (";
         q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
         //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
         qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
@@ -1112,66 +1122,54 @@ int main()
 
         // ~~~~~~~~~~~~~~~~~~~~ Dynamic Shape Generation ~~~~~~~~~~~~~~~
         // generate dynamic shapes to help with  assertion checking
-        if(genDynamicShapes){
-//            std::cout << "\n**************************"<< std::endl;
-//            std::cout << " Dynamic Shape Generation "<< std::endl;
-//            std::cout << "**************************"<< std::endl;
+    if(genDynamicShapes){
+        if(sc<1){
+            std::cout << "\n**************************"<< std::endl;
+            std::cout << " Dynamic Shape Generation "<< std::endl;
+            std::cout << "**************************"<< std::endl;
+        }
 
-            // make a table for dynamic shapes
-            // check for and make a table called 'braking' and 'precondition'
-            // done in db_tables.cpp
+        // check if vehicle, type? use index of agent_config.txt
+        // 0=pod, 1=adult, 2=child, 3=AV, 4=cav, 5=hgv, 6=cyclist, 7=aygo - *************** check that CARLA logs write this correctly
+
+        // find speed and maximum deceleration, should be ~3 m/s^2
+        double maximum_deceleration = vect_amax.at(agentsListTypeNo[sc]);
+        double velocity = agentSpeed[sc];
+        //double bearing = agentYawList[sc];
+
+        // determine the braking distance
+        double braking_distance = pow(velocity,2) / (2 * maximum_deceleration);
+
+        // for each vehicle type, re-draw the polygon with delta-offset
+        double *zb;
+        QString zone = "braking";
+        zb = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag, scale);
+        double x1=zb[0],x2=zb[1],x3=zb[2],x4=zb[3],y1=zb[4],y2=zb[5],y3=zb[6],y4=zb[7];
+
+        //convert to lat long
+        double * geo;
+        geo = carla_to_geo(x1,x2,x3,x4,y1,y2,y3,y4,m_per_deg_lon,m_per_deg_lat, minlon, minlat);
+        //double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
+
+        // draw geometry to table
+        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
 
 
-            // check if vehicle, type? use index of agent_config.txt
-            // 0=pod, 1=adult, 2=child, 3=AV, 4=cav, 5=hgv, 6=cyclist, 7=aygo - *************** check that CARLA logs write this correctly
 
-            // find speed and maximum deceleration, should be ~3 m/s^2
-            double maximum_deceleration = vect_amax.at(agentsListTypeNo[sc]);
-            double velocity = agentSpeed[sc];
-            double bearing = agentYawList[sc];
+        //----------------------------------------------
+        // repeat for precondition zone
+        double *zp;
+        zone = "precondition";
+        zp = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag, scale);
+        x1=zp[0];x2=zp[1];x3=zp[2];x4=zp[3];y1=zp[4];y2=zp[5];y3=zp[6];y4=zp[7];
 
-            // determine the braking distance
-            double braking_distance = pow(velocity,2) / (2 * maximum_deceleration);
-            //if(sc<55)
-            //    qDebug() << "Dynamic Shape Generation# acc, v, d, theta: " << maximum_deceleration <<","<< velocity <<","<< braking_distance << bearing;
+        //convert to lat long
+        geo = carla_to_geo(x1,x2,x3,x4,y1,y2,y3,y4,m_per_deg_lon,m_per_deg_lat, minlon, minlat);
+        //double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
 
-            // might want to cut off d<0.01m?
+        // draw geometry to table
+        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
 
-
-            // for each vehicle type, re-draw the polygon with delta-offset
-            double *zb;
-            QString zone = "braking";
-            zb = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag);
-            double x1=zb[0],x2=zb[1],x3=zb[2],x4=zb[3],y1=zb[4],y2=zb[5],y3=zb[6],y4=zb[7];
-
-//            //convert and offset the lat & lon
-//            x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
-//            x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
-//            x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
-//            x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
-
-            //convert to lat long
-            auto [x1,x2,x3,x4,y1,y2,y3,y4]=carla_to_geo(x1,x2,x3,x4,y1,y2,y3,y4,m_per_deg_lon,m_per_deg_lat, minlon, minlat);
-
-            // dump new zone coords in a table
-            int SRID = 4326;
-            QString qs, q1, q2, q3, q4, qAT;
-            q1 = "INSERT INTO "+schema+"."+zone+" (";
-            q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
-            //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
-            qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
-            q3 = ", ST_GeomFromText('POLYGON((";
-            q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
-                            arg(x1,10,'f',7).arg(y1,10,'f',7).arg(x2,10,'f',7).arg(y2,10,'f',7).
-                            arg(x3,10,'f',7).arg(y3,10,'f',7).arg(x4,10,'f',7).arg(y4,10,'f',7).arg(SRID);
-            qs = q1 + q2 + qAT + q3 + q4;
-
-            // send string
-            if(verbose) qDebug() << "#update_agent_shape# QString: " << qs;
-            model.setQuery(qs);
-            if (model.lastError().isValid())
-                    qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
-            if(verbose) qDebug() << "#update_agent_shape# agent shape update";
 
 
         }

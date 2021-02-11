@@ -85,6 +85,21 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "#db_tables# lookup table created...";
 
+    // ~~~~~~~~~~~~~~~~~~~~ Actors ~~~~~~~~~~~~~~~~~~
+    // Create dynamic data table for Actors
+    sql_string = "DROP TABLE IF EXISTS "+schema+".actors";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "actors table deleted...";
+
+    sql_string = "create table "+schema+".actors (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# braking created...";
+
 
     // ~~~~~~~~~~~~~~~~~~~~ Zones~~~~~~~~~~~~~~~~~~
     // Create dynamic data table for Braking Zone
