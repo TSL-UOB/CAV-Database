@@ -1137,8 +1137,10 @@ int main()
         double velocity = agentSpeed[sc];
         //double bearing = agentYawList[sc];
 
-        // determine the braking distance
+        // determine the braking & stopping distance
+        double thinking_time = 0.5;
         double braking_distance = pow(velocity,2) / (2 * maximum_deceleration);
+
 
         // for each vehicle type, re-draw the polygon with delta-offset
         double *zb;
@@ -1170,6 +1172,31 @@ int main()
         // draw geometry to table
         draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
 
+
+        //----------------------------------------------
+        // Maybe have this as a separate file that is
+        // used only if overtaking is detected
+        //----------------------------------------------
+
+        // has an asserion zone been detected?
+        // assertion triggered based on actor types and situation
+
+        // step through on each time
+        double time = 0.00; //may need to pull this from first line of the logs
+        // agentsSimTime[sc]
+
+        // find the stopping distance for ego, lead and oncoming
+        double thinking_distance = velocity(at_time_index) * thinking_time;
+        double stopping_distance = thinking_distance + braking_distance;
+
+        double L_EV = 0; //length of the vehicle that is doing the overtaking
+        double S_EV = 0; //stopping distance of the vehicle that is doing the overtaking
+
+        double L_LV = 0; //length of the vehicle that is being overtaken
+        double S_LV = 0; //stopping distance of the vehicle that is being overtaken
+
+        // find the overtaking distance
+        double overtaking_distance = L_EV + S_EV + L_LV + S_LV;
 
 
         }
