@@ -22,14 +22,17 @@ coords = [left_x, left_y;flip(righ_x), flip(righ_y); left_x(1), left_y(1)];
 figure(1); clf;hold on
 for index=1:numel(coords(:,1))
     x = coords(1:index,1);
-    y = coords(1:index,2);
-    
+    y = coords(1:index,2);    
     plot(x, y, '-k');
     pause(0.1)
     plot_title = sprintf('Boundary for lanelet ID %d', laneletID);
-    title(plot_title)
-    legend('outer boundary','location', 'best')
+    title(plot_title)    
+    F(index) = getframe(gcf); %animate    
 end
+
+videoTag = strcat('Lanelet_ani_',num2str(laneletID));
+videoFileName = sprintf('%s_%s',videoTag,datestr(now,'HH_MM_SS'));
+exportMovie
 
 %% plot all
 for index=1:numel(laneIDs)
