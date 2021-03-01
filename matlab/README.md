@@ -20,7 +20,7 @@ To use this data in a GIS format the data must be rearranged. The principle is t
 To check data is sequential you can plot the lanelet element wise, which is good for identifying sequential read errors or gaps in the polygon, use 'plot by point'.
 
 
-![](lanelet_ani2.gif)
+![](lane_ani.gif)
 
 ## GIS Testing
 To check the data, you can test with the 'coord' array data which is formatted with the above corrections. Drop this into a postgis polygon function using pgAdmin or similar to view the polygon layout before applying the geo-reference.
