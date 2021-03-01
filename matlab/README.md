@@ -3,7 +3,7 @@
 Set the filename of your lanelets data. This must be converted from xml to txt using this method ... Abanoub please add link here!
 
 Use the plot all function to view all individual lanelets. 
-<img align="left" width="500" src="lanelet104a.jpg">
+![](lanelet104a.jpg)
 
 To plot individual lane ID set 'laneletID' and run 'filter for lanelet ID + plot'.
 ![](lanelet112.jpg)
