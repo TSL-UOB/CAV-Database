@@ -3,7 +3,7 @@
 Set the filename of your lanelets data. This must be converted from xml to txt using this method ... Abanoub please add link here!
 
 Use the plot all function to view all individual lanelets.
-![left](lanelet104a.jpg)
+![l](lanelet104a.jpg)
 
 
 To plot individual lane ID set 'laneletID' and run 'filter for lanelet ID + plot'
@@ -11,4 +11,8 @@ To plot individual lane ID set 'laneletID' and run 'filter for lanelet ID + plot
 
 
 To plot a lanelet , which is good for identifying sequential read errors or gaps in the polygon, use 'plot by point'
+
+To check the data, use pgAdmin or similar to view the polygon layour before applying the geo-reference.
+![](lanelet_raw.png)
+
 
