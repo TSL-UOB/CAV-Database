@@ -8,19 +8,22 @@ lanelet = import_lanelet_txt(filename);
 laneIDs = unique(lanelet.lanelet_id);
 
 %% -- filter for lanelet ID
-laneletID = 100;
+laneletID = 112;
 sel = lanelet(laneletID==lanelet.lanelet_id,:);
 left_x = sel.x(sel.bound=='leftBound',:);
 left_y = sel.y(sel.bound=='leftBound',:);
 righ_x = sel.x(sel.bound=='rightBound',:);
 righ_y = sel.y(sel.bound=='rightBound',:);
+coords = [left_x, left_y;righ_x, righ_y];
 
 figure(1), clf; hold on;
 plot(left_x, left_y, '-r');
 plot(righ_x, righ_y, '-b');
+plot_title = sprintf('Boundary for lanelet ID %d', laneletID);
+title(plot_title)
+legend('left boundary','right boundary','location', 'best' )
 
-%% 
-
+%% plot all 
 for index=1:numel(laneIDs)
 
 laneletID = laneIDs(index);
@@ -29,6 +32,9 @@ left_x = sel.x(sel.bound=='leftBound',:);
 left_y = sel.y(sel.bound=='leftBound',:);
 righ_x = sel.x(sel.bound=='rightBound',:);
 righ_y = sel.y(sel.bound=='rightBound',:);
+plot_coords = [left_x, left_y,righ_x, righ_y];
+
+% plot_lanelet(laneletID, plot_coords)
 
 figure(2); clf;hold on
 plot(left_x, left_y, '-r');
@@ -41,3 +47,6 @@ end
 
 %% Coordinates for easy debugging
 coords = [left_x, left_y;righ_x, righ_y];
+
+
+
