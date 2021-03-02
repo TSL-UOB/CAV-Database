@@ -8,7 +8,7 @@ lanelet = import_lanelet_txt(filename);
 laneIDs = unique(lanelet.lanelet_id);
 
 %% -- filter for lanelet ID + plot
-laneletID = 112;
+laneletID = 100;
 sel = lanelet(laneletID==lanelet.lanelet_id,:);
 left_x = sel.x(sel.bound=='leftBound',:);
 left_y = sel.y(sel.bound=='leftBound',:);
@@ -71,7 +71,13 @@ for index=1:numel(coords(:,1))
 end
 
 %% Generate SQL string for POSTGIS
+SRID = 4326;
 top = "SELECT ST_GeomFromText('POLYGON((";
-tail = "))')";
+tail = sprintf("))', %4.0f)",SRID);
 SQL_query = strcat(top, GPS_str, tail);
+
+%% Write to file
+fid = fopen('SQL_lanelets.txt','wt');
+fprintf(fid, '%s\n', SQL_query);
+fclose(fid);
 

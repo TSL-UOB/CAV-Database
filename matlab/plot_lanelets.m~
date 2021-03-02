@@ -8,7 +8,7 @@ lanelet = import_lanelet_txt(filename);
 laneIDs = unique(lanelet.lanelet_id);
 
 %% -- filter for lanelet ID + plot
-laneletID = 112;
+laneletID = 110;
 sel = lanelet(laneletID==lanelet.lanelet_id,:);
 left_x = sel.x(sel.bound=='leftBound',:);
 left_y = sel.y(sel.bound=='leftBound',:);
@@ -53,7 +53,7 @@ run('plot_func');
 pause(1)
 end
 
-%% Adjust Lat(y) & Long(x) to reference
+%% GPS String
 lat_long_convert %get the conversion ratios
 GPS = zeros(numel(coords(:,1)),2);
 GPS_str = '';
@@ -64,13 +64,15 @@ for index=1:numel(coords(:,1))
     GPS(index,1) = x/m_per_deg_lon + minlon;
     GPS(index,2) = y/m_per_deg_lat + minlat;
     if index < numel(coords(:,1))
-        GPS_str = GPS_str + 'x y, '; sprintf(' %d %d,', x,y);
+        GPS_str = strcat(GPS_str,sprintf(' %15.12f %15.12f,',GPS(index,1),GPS(index,2)));
     else
-        GPS_str = GPS_str + 'x y';
+        GPS_str = strcat(GPS_str,sprintf(' %15.12f %15.12f' ,GPS(index,1),GPS(index,2)));
     end
 end
 
 %% Generate SQL string for POSTGIS
+SRID = 4326;
 top = "SELECT ST_GeomFromText('POLYGON((";
-tail = "))')";
+tail = sprintf("))', %4.0f)",SRID);
+SQL_query = strcat(top, GPS_str, tail);
 
