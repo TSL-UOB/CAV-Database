@@ -1094,9 +1094,7 @@ int main()
                 qDebug() << "#OSM Lat/Lon Transform# x3" << x3 << "y3" << y3;
                 qDebug() << "#OSM Lat/Lon Transform# x4" << x4 << "y4" << y4;
         }
-
-
-
+        
         // build string
         int SRID = 4326;
         //double sim_time=0;
@@ -1237,6 +1235,35 @@ int main()
     if(diag) qDebug() << "OSM map data imported...";
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    
+    
+
+// ~~~~~~~~~~~~~~~~~~~~ Import the lanelets data ~~~~~~~~~~~~~~~~~~
+std::cout << "\n*********************"<< std::endl;
+std::cout << "   LANELETS IMPORT   "<< std::endl;
+std::cout << "*********************"<< std::endl;    
+
+// 1. follow the guide to get lanelets data from openDrive
+// 2. use Abanoubs code to convert map.xml to map.txt
+
+// read in the txt file into vector format
+
+// identify number of lanelets, capture ID and repeat for each
+
+// find the number of X's or Y's in the lanelet
+
+// loop through 
+
+// generate a string of xy pairs comma separated, offset against reference lat/long
+
+// SELECT ST_GeomFromText('POLYGON((
+// X's Y's, (looped, last one has no comma)
+// ))',4326); (replace 4326 with SRID)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 
 
 // ~~~~~~~~~~~~~~~~~~~~ import map geoJSON ~~~~~~~~~~~~~~~~~~~~~

@@ -24,12 +24,17 @@ for index=1:numel(coords(:,1))
     x = coords(1:index,1);
     y = coords(1:index,2);    
     plot(x, y, '-k');
-    xlim([])
-    ylim([])
-    pause(0.1)
+    xlim([min(coords(:,1)) max(coords(:,1))]);
+    ylim([min(coords(:,2)) max(coords(:,2))]);
+    pause(0.05)
     plot_title = sprintf('Boundary for lanelet ID %d', laneletID);
     title(plot_title)    
-    F(index) = getframe(gcf); %animate    
+    F(index) = getframe(gcf); %animate  
+    if index==numel(coords(:,1)) %persist last frame
+        F(index+1) = F(index);
+        F(index+2) = F(index);
+        F(index+3) = F(index);
+    end
 end
 
 videoTag = strcat('Lanelet_ani_',num2str(laneletID));
@@ -47,4 +52,25 @@ righ_y = sel.y(sel.bound=='rightBound',:);
 run('plot_func');
 pause(1)
 end
+
+%% Adjust Lat(y) & Long(x) to reference
+lat_long_convert %get the conversion ratios
+GPS = zeros(numel(coords(:,1)),2);
+GPS_str = '';
+%assuming XY data is in meters
+for index=1:numel(coords(:,1))
+    x = coords(index,1);
+    y = coords(index,2);
+    GPS(index,1) = x/m_per_deg_lon + minlon;
+    GPS(index,2) = y/m_per_deg_lat + minlat;
+    if index < numel(coords(:,1))
+        GPS_str = GPS_str + 'x y, '; sprintf(' %d %d,', x,y);
+    else
+        GPS_str = GPS_str + 'x y';
+    end
+end
+
+%% Generate SQL string for POSTGIS
+top = "SELECT ST_GeomFromText('POLYGON((";
+tail = "))')";
 
