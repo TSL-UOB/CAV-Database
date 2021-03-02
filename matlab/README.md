@@ -32,10 +32,12 @@ To check the data, you can test with the 'coord' array data which is formatted w
 ## Build GPS String
 Using this section of the code we can now transform the X and Y coordinates to GIS friendly longitude and latitude using the lat_long_convert script. This requires the minimum longitude/latitude and min point latitude of the area you are considering in your map. These can be approximated from the <geoReference> values in the openDrive file.
 
-	'''SRID = 4326;
-	'''top = "SELECT ST_GeomFromText('POLYGON((";
-	'''tail = sprintf("))', %4.0f)",SRID);
-	'''SQL_query = strcat(top, GPS_str, tail);
+	'''
+	SRID = 4326;
+	top = "SELECT ST_GeomFromText('POLYGON((";
+	tail = sprintf("))', %4.0f)",SRID);
+	SQL_query = strcat(top, GPS_str, tail);
+	'''
 
 ## SQL Query in QGIS
 Add a virtual layer: Layer -> Add -> Virtual Layer. Go to the query box and add the SQL statement generated in the previous step. Test and Add. We can now see the polygon shape that can be used for assertion testing. This is assuming you have already set up your database with a postgis extension enabled.
