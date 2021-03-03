@@ -45,5 +45,8 @@ Add a virtual layer: Layer -> Add -> Virtual Layer. Go to the query box and add 
 
 ![](multi_lanes.png)
 
-## Long Strings!
-For very long lanelets you may get strings being truncated. There is an SQL file writer for writing to a text files 'SQL_lanelets.txt'.
+## Long Strings
+For very long lanelets you may get strings being truncated. There is an SQL file writer for writing to a text file 'SQL_lanelets.txt'.
+
+## Run in C++/Qt Creator
+Next is to run all of this in C++ and write the lanelet geometry directly to a database table so that all the lanelets can be viewed on a single layer.

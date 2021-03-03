@@ -12,6 +12,8 @@
 #include "uepostgis.h"
 #include <tuple>
 
+#include "readsimlog.h"
+
 typedef  long timestamp_t;
 static timestamp_t
 get_timestamp ()
@@ -259,7 +261,6 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
 
     return return_coordiantes;
 }
-
 void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID, int agentsTypeNo, double SimTime, double * geo, int SRID = 4326, bool verbose=false)
 {
     // dump new zone coords in a table
@@ -282,10 +283,9 @@ void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID,
             qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
     if(verbose) qDebug() << "#update_agent_shape# agent shape update";
 }
-
-//std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
 double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y2,double y3,double y4,double m_per_deg_lon,double m_per_deg_lat, double minlon, double minlat)
 {
+//std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
     static double return_coordiantes[10];
     x1 = x1/m_per_deg_lon + minlon; y1 = y1/m_per_deg_lat + minlat;
     x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
@@ -303,7 +303,6 @@ double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y
 
     return return_coordiantes;
 }
-
 double * zone_coords(double braking_distance, double velocity, double ag_len, double ag_wid, double posX, double posY, double yaw, QString zone_type, bool rad_format=false, bool diag=true, double scale=1)
 {
 //Get rotated coords from agent pos and shape
@@ -385,9 +384,6 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
 
     return return_coordiantes;
 }
-
-
-
 void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
 {
     //call the coordinates
@@ -610,257 +606,7 @@ public: std::vector<std::string> vect_typ;
             }
         }
 };
-class readSimLog
-{
-//read sim data file
 
-public:
-        std::ifstream myfile;   //filename for the log
-        std::string header; //csv header
-        unsigned long fileLineCount = 0;
-        std::string line; //temporary holder for csv line
-        //Use a structure for csv columns
-        struct Record
-        {
-            int agentID;
-            std::string agentType;
-            int testNo, repeatNo, agentNo, agentTypeNo;
-            double simTime, simFPS, simX, simY, simZ, simYaw, velX, velY, velZ, speed, wallClock;
-        };
-        std::vector<Record> my_records;
-
-    void read_file(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
-    {
-        std::cout << "\n***********************"<< std::endl;
-        std::cout << " Reading Sim Data File "<< std::endl;
-        std::cout << "***********************"<< std::endl;
-
-        if (myfile.is_open())
-        {
-            if (diag) std::cout << "Sim Data File opened successfully." << std::endl;
-            getline(myfile,header);
-
-            while (getline(myfile, line))
-            {
-                //9 columns: agentID, agentType, agentTypeNo, time, fps, x, y, z, yaw
-                Record record;
-                fileLineCount++;
-                std::istringstream iss(line);
-                std::string token;
-
-                getline(iss, token, ',');
-                record.agentID = std::stoi(token);
-
-                getline(iss, record.agentType, ',');
-
-                getline(iss, token, ',');
-                record.agentTypeNo = std::stoi(token);
-
-                getline(iss, token, ',');
-                record.simTime = std::stod(token);
-
-                getline(iss, token, ',');
-                record.simFPS = std::stod(token);
-
-                getline(iss, token, ',');
-                record.simX = std::stod(token);
-
-                getline(iss, token, ',');
-                record.simY = std::stod(token);
-
-                getline(iss, token, ',');
-                record.simZ = std::stod(token);
-
-                getline(iss, token, ',');
-                record.simYaw = std::stod(token);
-
-                my_records.push_back(record);
-
-            }//while getline
-
-        } else {
-            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
-        } //if myfile is_open
-
-
-        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
-    }
-
-    void read_file_carla(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
-    {
-        std::cout << "\n***********************"<< std::endl;
-        std::cout << " Reading Carla Data File "<< std::endl;
-        std::cout << "***********************"<< std::endl;
-
-        if (myfile.is_open())
-        {
-            if (diag) std::cout << "Sim Data File opened successfully." << std::endl;
-            getline(myfile,header);
-
-            while (getline(myfile, line))
-            {
-                if (line.empty())
-                {
-                    if(diag) std::cout << "##read_file_carla## empty line detected, skipping" << std::endl;
-                }
-                else
-                {
-                //11 columns: repeatNo, agentNo, agentID, agentType, agentTypeNo, time, fps, x, y, z, yaw
-                Record record;
-                fileLineCount++;
-                std::istringstream iss(line);
-                std::string token;
-
-                //repeat no. (int)
-                getline(iss, token, ',');
-                record.repeatNo = std::stoi(token);
-
-                //agent no.
-                getline(iss, token, ',');
-                record.agentNo = std::stoi(token);
-
-                //agent ID
-                getline(iss, token, ',');
-                record.agentID = std::stoi(token);
-
-                //agent type
-                getline(iss, record.agentType, ',');
-
-                //agent type no
-                getline(iss, token, ',');
-                record.agentTypeNo = std::stoi(token);
-
-                //simulation time
-                getline(iss, token, ',');
-                record.simTime = std::stod(token);
-
-                //simulation FPS
-                getline(iss, token, ',');
-                record.simFPS = std::stod(token);
-
-                //agent X, Y, Z & Yaw
-                getline(iss, token, ',');
-                record.simX = std::stod(token);
-                getline(iss, token, ',');
-                record.simY = std::stod(token);
-                getline(iss, token, ',');
-                record.simZ = std::stod(token);
-                getline(iss, token, ',');
-                record.simYaw = std::stod(token);
-
-                my_records.push_back(record);
-                }
-
-            }//while getline
-
-        } else {
-            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
-        } //if myfile is_open
-
-
-        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
-    }
-
-    void read_file_testbench(std::ifstream& myfile, bool diag=true) //, std::string line, std::vector<Record> my_records,
-    {
-        std::cout << "\n***********************"<< std::endl;
-        std::cout << " Reading Carla Data File "<< std::endl;
-        std::cout << "***********************"<< std::endl;
-
-        if (myfile.is_open())
-        {
-            if (diag) std::cout << "Testbench Data File opened successfully." << std::endl;
-            getline(myfile,header);
-
-            while (getline(myfile, line))
-            {
-                if (line.empty())
-                {
-                    if(diag) std::cout << "##read_file_testbench## empty line detected, skipping" << std::endl;
-                }
-                else
-                {
-                    //17 columns: 1 testNo ,2 repeatNo, 3 agentNo, 4 agentID, 5 agentType,
-                    //            6 agentTypeNo, 7/8/9/10 x, y, z, yaw,
-                    //            11/12/13 vel_x, vel_y, vel_z,
-                    //            14 speed, 15 time, 16 sim_time, 17 fps
-                    Record record;
-                    fileLineCount++;
-                    std::istringstream iss(line);
-                    std::string token;
-
-                    //1 testNo (int)
-                    getline(iss, token, ',');
-                    record.testNo = std::stoi(token);
-
-                    //2 repeatNo (int)
-                    getline(iss, token, ',');
-                    record.repeatNo = std::stoi(token);
-
-                    //3 agentNo. (int)
-                    getline(iss, token, ',');
-                    record.agentNo = std::stoi(token);
-
-                    //4 agentID
-                    getline(iss, token, ',');
-                    record.agentID = std::stoi(token);
-
-                    //5 agentType
-                    getline(iss, record.agentType, ',');
-
-                    //6 agent type no
-                    getline(iss, token, ',');
-                    record.agentTypeNo = std::stoi(token);
-
-                    //7/8/9/10 agent X, Y, Z & Yaw
-                    getline(iss, token, ',');
-                    record.simX = std::stod(token);
-                    getline(iss, token, ',');
-                    record.simY = std::stod(token);
-                    getline(iss, token, ',');
-                    record.simZ = std::stod(token);
-                    getline(iss, token, ',');
-                    record.simYaw = std::stod(token);
-
-                    //11/12/13  vel_x, vel_y, vel_z
-                    getline(iss, token, ',');
-                    record.velX = std::stod(token);
-                    getline(iss, token, ',');
-                    record.velY = std::stod(token);
-                    getline(iss, token, ',');
-                    record.velZ = std::stod(token);
-
-                    //14 speed
-                    getline(iss, token, ',');
-                    record.speed = std::stod(token);
-
-                    //15 time (cyclic simulation time)
-                    getline(iss, token, ',');
-                    record.simTime = std::stod(token);
-
-                    //16 sim_time (wallClock)
-                    getline(iss, token, ',');
-                    record.wallClock = std::stod(token);
-
-                    //17 simulation FPS
-                    getline(iss, token, ',');
-                    record.simFPS = std::stod(token);
-
-
-                    my_records.push_back(record);
-                }
-
-            }//while getline
-
-        } else {
-            qDebug() << "\033[0;31m#readSimLog.read_file# ERROR: Sim File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
-        } //if myfile is_open
-
-
-        //if (diag) std::cout << "AV position is: " << my_records[1].simX << " " << my_records[1].simY << std::endl;
-    }
-
-};
 
 //*********************************************************************
 //
@@ -882,7 +628,7 @@ int main()
 
 
     std::cout << "**************************" << std::endl;
-    std::cout << "*   postGIS Interface    *" << std::endl;
+    std::cout << "*   databse connection   *" << std::endl;
     std::cout << "**************************\n" << std::endl;
 
     //Connect to the database options: <greg, severin>
@@ -918,6 +664,8 @@ int main()
     }
 
 
+    // ~~~ Initiate map and static data
+    initMap(model, schema, diag);
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~ hard-coded values ~~~~~~~~~~~~~~~~~~~~~
@@ -1170,7 +918,6 @@ int main()
         // draw geometry to table
         draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
 
-
         //----------------------------------------------
         // Maybe have this as a separate file that is
         // used only if overtaking is detected
@@ -1184,8 +931,8 @@ int main()
         // agentsSimTime[sc]
 
         // find the stopping distance for ego, lead and oncoming
-        double thinking_distance = velocity(at_time_index) * thinking_time;
-        double stopping_distance = thinking_distance + braking_distance;
+        //double thinking_distance = velocity(at_time_index) * thinking_time;
+        //double stopping_distance = thinking_distance + braking_distance;
 
         double L_EV = 0; //length of the vehicle that is doing the overtaking
         double S_EV = 0; //stopping distance of the vehicle that is doing the overtaking
@@ -1214,169 +961,11 @@ int main()
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-// ~~~~~~~~~~~~~~~~~~~~ Import the OSM data from file ~~~~~~~~~~~~~~~~~~
-  std::cout << "\n*********************"<< std::endl;
-    std::cout << "      OSM IMPORT     "<< std::endl;
-    std::cout << "*********************"<< std::endl;
-
-    //    read in the OSM file here
-    //    Execute the following code in a terminal, e.g.
-    //    osm2pgsql -d postgis_in_action -H localhost -U postgres -P 5432 -S
-    // /usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm
-
-    // Not tested but should work
-    // check how to send password
-    // chack file name and location
-    std::string str;
-    str = "osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S "
-          "/usr/local/share/osm2pgsql/default.style --hstore ~/git/CAV-Database/testQT/DMR.osm";
-    const char *command = str.c_str();
-    system(command);
-    if(diag) qDebug() << "OSM map data imported...";
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    
-    
-
-// ~~~~~~~~~~~~~~~~~~~~ Import the lanelets data ~~~~~~~~~~~~~~~~~~
-std::cout << "\n*********************"<< std::endl;
-std::cout << "   LANELETS IMPORT   "<< std::endl;
-std::cout << "*********************"<< std::endl;    
-
-// 1. follow the guide to get lanelets data from openDrive
-// 2. use Abanoubs code to convert map.xml to map.txt
-
-// read in the txt file into vector format
-
-// identify number of lanelets, capture ID and repeat for each
-
-// find the number of X's or Y's in the lanelet
-
-// loop through 
-
-// generate a string of xy pairs comma separated, offset against reference lat/long
-
-// SELECT ST_GeomFromText('POLYGON((
-// X's Y's, (looped, last one has no comma)
-// ))',4326); (replace 4326 with SRID)
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
 
-// ~~~~~~~~~~~~~~~~~~~~ import map geoJSON ~~~~~~~~~~~~~~~~~~~~~
 
-    //TODO
-
-    // run this command
-    // ogr2ogr -f "PGDump" test.sql "loop_geo.geojson" -oo NAME=agents
-    // Open the file and paste into pgAdmin SQL query tool
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-// ~~~~~~~~~~~~~~~~~~~~ select only buildings data from OSM ~~~~~~~~~~~~~~~~~~
-
-//    //Select the agent(s) to test against
-//        insert into agents.map_test (agent_id, asr_geom)
-//        SELECT agent_id, geom
-//        FROM agents.status
-
-//    //Off-road or building collision test
-//        insert into agents.assertions (agent_id, sim_time, asr_id, asr_result)
-//        select g3.agent_id, 0 AS sim_time, 3 AS asr_id, ST_Overlaps(g1.asr_geom,g2.asr_geom) AS asr_result
-//        FROM agents.map_test g3, agents.map_test g1, agents.map_test g2
-//        WHERE g1.agent_id = 9 AND g2.agent_id != 9 --g1.sim_time = %1 AND g2.sim_time = %1
-//        limit 10
-
-// ~~~~~~~~~~~~~~~~~~~~ MAP_TEST ~~~~~~~~~~~~~~~~~~
-
-    // Create table for map polygons used for assertion testing
-    QString sql_string;
-    sql_string = "DROP TABLE IF EXISTS "+schema+".map_test";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "map_test table deleted...";
-    sql_string = "create table "+schema+".map_test (agent_id int, sim_time float, "
-                                        "PRIMARY KEY (agent_id, sim_time), agent_type int, geom geometry(polygon, 4326)) "; //
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# map_test table created...";
-
-    // Transfer the map dat removing unecessay polygons
-    sql_string = "insert into "+schema+".map_test (agent_id, sim_time, agent_type, geom)"
-                 "SELECT osm_id, 0 AS sim_time, 0 AS agent_type, ST_Transform(way,4326) "
-                 "FROM public.planet_osm_polygon as P "
-                 "where p.landuse is NULL "
-                 "and (p.amenity <> 'university' OR p.amenity is null) "
-                 "and (p.amenity <> 'hospital' OR p.amenity is null) "
-                 "and (p.amenity <> 'parking' OR p.amenity is null) "
-                 "and (p.amenity <> 'school' OR p.amenity is null) "
-                 "and (p.leisure <> 'recreation_ground' OR p.leisure is null)";
-//    sql_string = "insert into "+schema+".map_test (agent_id, sim_time, agent_type, geom)"
-//                 "SELECT osm_id, 0 AS sim_time, 0 AS agent_type, ST_Transform(way,4326) "
-//                 "FROM public.planet_osm_polygon as P ";
-
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# map-transfer complete...";
-
-    // Insert the agents into the map_test table
-    sql_string = "insert into "+schema+".map_test (agent_id, agent_type, sim_time, geom) "
-                                       "SELECT agent_id, agent_type, sim_time, geom FROM "+schema+".status";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# map-transfer complete...";
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    // Add roadrunner curb location to map - this doesn't work without conversion to polygon, better to use ST_Boundary on line string
-    //    insert into agents.map_test (agent_id, sim_time, agent_type, geom)
-    //    select ogc_fid AS agent_id, 0 AS sim_time, 80 AS agent_type,
-    //        st_makepolygon(st_geomfromtext(st_astext(wkb_geometry))) AS geom
-    //    from agents.loop_geo as WG
-    //    where WG.lanetype = 'Curb'
-/*
-    // Identify if AV has crossed Curb boundary as asserion
-        DROP TABLE IF EXISTS agents.combo_map
-        create table agents.combo_map (id SERIAL primary key, agent_id int, geom geometry)
-        insert into agents.combo_map (agent_id, geom)
-        select ogc_fid AS agent_id, wkb_geometry AS geom
-        from agents.loop_geo
-        where lanetype = 'Curb'
-
-    //then do this
-        insert into agents.combo_map (agent_id, geom)
-        select agent_id, geom
-        from agents.map_test
-        where sim_time = 12.5
-
-    //then check curb mounting with this
-        select g2.agent_id, st_crosses(g1.geom, g2.geom)
-        from agents.combo_map g1, agents.combo_map g2
-        where g1.agent_id=189 and g2.agent_id != 189
-
-    //or run animation by doing
-        DROP TABLE IF EXISTS agents.combo_map
-        create table agents.combo_map (id SERIAL primary key, sim_time float, agent_id int, geom geometry )
-        insert into agents.combo_map (sim_time, agent_id, geom)
-                select -1 AS sim_time, ogc_fid AS agent_id, wkb_geometry AS geom
-                from agents.loop_geo
-                where lanetype = 'Curb'
-        insert into agents.combo_map (sim_time, agent_id, geom)
-                select sim_time, agent_id, geom
-                from agents.map_test
-
-    //insert some cornering agents to centre the view on the DMR
-
-
-*/
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // For WP4 Demo - using test003.txt
@@ -1471,6 +1060,7 @@ std::cout << "*********************"<< std::endl;
 //      between different types and actors?
 
     // Create table for Stats
+    QString sql_string;
     sql_string = "DROP TABLE IF EXISTS "+schema+".stats";
     model.setQuery(sql_string);
     if (model.lastError().isValid())

@@ -3,8 +3,11 @@
 
 #include <QtSql>
 
-QSqlDatabase db_connect(char userID[]); //fwd declaration for db connection
-void db_tables(QSqlQueryModel& model, QString schema="ch03", bool diag=true); //fwd declaration for creating tables
+//fwd declarations
+QSqlDatabase db_connect(char userID[]);
+void db_tables(QSqlQueryModel& model, QString schema="ch03", bool diag=true);
+void initMap(QSqlQueryModel& model, QString schema, bool diag=false);
+void laneletVector(std::ifstream& file, bool diag);
 
 //assertions
 void asr_01(QSqlQueryModel& model, QString schema, double sim_time, int asr_id=1, bool diag=true);
