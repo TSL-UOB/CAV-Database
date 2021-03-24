@@ -186,3 +186,12 @@ write_file(lanelet_id_array,bound_array,x_array,y_array,yaw_array,file_name)
 # plt.show()
 
 
+def draw_line(x, y, angle):
+    r = 1  # or whatever fits you
+    plt.arrow(x, y, r*np.cos(angle), r*np.sin(angle), length_includes_head = True, head_width = 0.2)
+
+
+for i in range(len(x_array_float)):
+  draw_line(x_array_float[i],y_array_float[i],-np.pi/2 - yaw_array[i])
+
+plt.show()
