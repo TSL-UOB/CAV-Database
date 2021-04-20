@@ -640,7 +640,7 @@ int main()
     QSqlQueryModel model; //create model for queries
 
     //create database tables
-    QString schema="simdata";
+    QString schema="overtaking";
     db_tables(model, schema, true);
 
     //Open agent config file

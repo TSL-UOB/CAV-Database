@@ -15,17 +15,9 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
     std::cout << "      OSM IMPORT     "<< std::endl;
     std::cout << "*********************"<< std::endl;
 
-    //    read in the OSM file here
-    //    Execute the following code in a terminal, e.g.
-    //    osm2pgsql -d postgis_in_action -H localhost -U postgres -P 5432 -S
-    // /usr/local/share/osm2pgsql/default.style --hstore ~/Downloads/DMR.osm
-
-    // Not tested but should work
-    // check how to send password
-    // chack file name and location
     std::string str;
     str = "osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S "
-          "/usr/local/share/osm2pgsql/default.style --hstore ~/git/CAV-Database/testQT/DMR.osm";
+          "/usr/local/share/osm2pgsql/default.style --hstore assertion_case_study/downend_road.osm";
     const char *command = str.c_str();
     system(command);
     if(diag) qDebug() << "OSM map data imported...";
@@ -44,7 +36,7 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
     // 2. use Abanoubs code to convert map.xml to map.txt
 
     // read in the txt file into vector format
-    std::ifstream file ("loop_geo_RHD.txt");
+    std::ifstream file ("assertion_case_study/T_Junction_lanelets_bounds.txt");
     laneletVector(file, diag);
 
     // identify number of lanelets, capture ID and repeat for each

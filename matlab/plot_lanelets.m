@@ -1,5 +1,6 @@
 %% -- select lanelet txt
 filename = 'loop_geo_RHD.txt';
+filename = 'T_Junction_lanelets_bounds.txt';
 
 %% -- import to matlab
 lanelet = import_lanelet_txt(filename);
@@ -70,11 +71,13 @@ for index=1:numel(coords(:,1))
     end
 end
 
+% PLEASE read GPS_str for debugging
+
 %% Generate SQL string for POSTGIS
 SRID = 4326;
 top = "SELECT ST_GeomFromText('POLYGON((";
 tail = sprintf("))', %4.0f)",SRID);
-SQL_query = strcat(top, GPS_str, tail);
+SQL_query = strcat(top, GPS_str, tail)
 
 %% Write to file
 fid = fopen('SQL_lanelets.txt','wt');
