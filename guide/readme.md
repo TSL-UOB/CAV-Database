@@ -1,8 +1,8 @@
 # Making a table in SQL
 
-Let's generate a static lookup table that can be used to access some data. 
+Let's generate a static lookup table that can be used to access some data. We will create a schema, then a table in that schema and then import a csv file into the table.
 
-Create a schema called "sim_log":
+Create a schema called "sim_log"
 
 ``` sql
 CREATE SCHEMA sim_log;
