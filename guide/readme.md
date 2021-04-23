@@ -22,3 +22,11 @@ vVA_mps float,
 vOV_mps float);
 ```
 
+Copy the csv data into the table using the copy command and using a delimiter. The header command prevents the first row being copied over.
+
+``` sql
+copy sim_log.dcd_lookup
+from '~/Downloads/DCD_calculations.csv'
+DELIMITER ','
+CSV HEADER;
+```
