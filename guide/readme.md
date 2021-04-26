@@ -4,7 +4,7 @@ Here is an overview of the guides for using SQL and POSTGIS for assertion testin
 
 1. Getting pgAdmin setup
 2. A guide to making tables
-3. Linking a csv to your database [link](csv_to_sql.md)
+3. Linking a csv to your database [link](guide_docs/csv_to_sql.md)
 4. Restoring a previous database backup
 5. A C++ connection guide
 6. Sending SQL queries from C++
