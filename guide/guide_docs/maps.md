@@ -24,3 +24,28 @@ If at any time you get an error saying the table already exists you may want to 
 If you now run the SQL to generate the table you may need to refresh the folder structure to see your newly generated table.
 
 ![](../pics/refresh.png)
+
+Load in the sample OSM data (or get your own from osm.com) and use the linux command line to load this into your database. Here we use the handy osm2pgsql library.
+
+``` linux
+osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S /usr/local/share/osm2pgsql/default.style --hstore assertion_case_study/downend_road.osm
+```
+
+This will write the OSM data to a databsed called "cav" on the localhost for user "greg_chance" on port "5432". Unless specified to a schema the data will go to the public space on your database.
+
+![](../pics/public_osm.png)
+
+Many unnecessary features are included in this data which will result in a messy rendered map. We can trim the data down to just the useful polygons and storing these in the map_config table.
+
+```sql
+insert into sim_log.map_test (map_id, geom) 
+SELECT osm_id, 
+ST_Transform(way,4326) 
+FROM public.planet_osm_polygon as P 
+where p.landuse is NULL 
+and (p.amenity <> 'university' OR p.amenity is null) 
+and (p.amenity <> 'hospital' OR p.amenity is null) 
+and (p.amenity <> 'parking' OR p.amenity is null) 
+and (p.amenity <> 'school' OR p.amenity is null)	
+```
+
