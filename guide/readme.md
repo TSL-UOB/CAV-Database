@@ -1,4 +1,4 @@
-# Making a table in SQL
+# Uploading CSV data to an SQL table
 
 Let's generate a static lookup table that can be used to access some data. We will create a schema, then a table in that schema and then import a csv file into the table.
 
@@ -30,3 +30,13 @@ from '/home/is18902/Downloads/DCD_calculations.csv'
 DELIMITER ','
 CSV HEADER;
 ```
+
+Looking in pgAdmin we can see the data by selecting all rows from the lookup table that we created
+
+``` sql
+SELECT * FROM sim_log.dcd_lookup
+```
+
+Here is how it should look in the table view of pgAdmin.
+
+![](csv_to_sql.png)
