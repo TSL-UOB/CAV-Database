@@ -22,11 +22,11 @@ vVA_mps float,
 vOV_mps float);
 ```
 
-Copy the csv data into the table using the copy command and using a delimiter. The header command prevents the first row being copied over.
+Copy the csv data into the table using the copy command and using a delimiter. The header command prevents the first row being copied over. For example here I point to my Download folder where I have my data saved in the right format.
 
 ``` sql
 copy sim_log.dcd_lookup
-from '~/Downloads/DCD_calculations.csv'
+from '/home/is18902/Downloads/DCD_calculations.csv'
 DELIMITER ','
 CSV HEADER;
 ```
