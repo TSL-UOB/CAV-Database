@@ -22,4 +22,13 @@ create table sim_log.thinking_distance
 PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON));
 ```
 
+Now lets load some sample simulation data into the database to visualise these dynamic layers, take a look at "ped_simdata.txt" in the samples folder. Using the "testQT.pro" project file load up Qt Creator and read the sim data by using the following (access near line 700 at main.cpp).
+
+``` cpp
+...
+std::ifstream simLogFile ("lboro_static_tests_short.txt");
+testLog.read_file_testbench (simLogFile, true); 
+...
+```
+
 
