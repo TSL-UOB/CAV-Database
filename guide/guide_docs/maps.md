@@ -1,6 +1,6 @@
 # Generating Map Data
 
-Here we will add some map data from OSM (Open Street Maps) following the layout in the database structure. The OSM data is stored in a table called map_config.
+Here we will add some map data from OSM (Open Street Maps) following the layout in the database structure for CAV assertion testing. The OSM data is stored in a table called map_config.
 
 ![](../pics/map_env.png)
 
@@ -25,10 +25,10 @@ If you now run the SQL to generate the table you may need to refresh the folder 
 
 ![](../pics/refresh.png)
 
-Load in the sample OSM data (or get your own from osm.com) and use the linux command line to load this into your database. Here we use the handy osm2pgsql library.
+Load in the sample OSM data (or get your own from osm.com) named "downend_road.osm" and use the linux command line to load this into your database. Here we use the handy osm2pgsql library.
 
 ``` linux
-osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S /usr/local/share/osm2pgsql/default.style --hstore assertion_case_study/downend_road.osm
+osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S /usr/local/share/osm2pgsql/default.style --hstore downend_road.osm
 ```
 
 This will write the OSM data to a databsed called "cav" on the localhost for user "greg_chance" on port "5432". Unless specified to a schema the data will go to the public space on your database.
