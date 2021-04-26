@@ -35,10 +35,10 @@ This will write the OSM data to a databsed called "cav" on the localhost for use
 
 ![](../pics/public_osm.png)
 
-Many unnecessary features are included in this data which will result in a messy rendered map. We can trim the data down to just the useful polygons and storing these in the map_config table.
+Many unnecessary features are included in this data which will result in a messy rendered map. We can trim the data down to just the useful polygons and storing these in the map_config table using something like this.
 
 ```sql
-insert into sim_log.map_test (map_id, geom) 
+insert into sim_log.map_config (map_id, geom) 
 SELECT osm_id, 
 ST_Transform(way,4326) 
 FROM public.planet_osm_polygon as P 
@@ -49,3 +49,6 @@ and (p.amenity <> 'parking' OR p.amenity is null)
 and (p.amenity <> 'school' OR p.amenity is null)	
 ```
 
+This should leave you with major buildings but remove large land area polygons.
+
+![](../pics/osm_filtered.png)
