@@ -19,7 +19,7 @@ create table sim_log.map_config
 
 If at any time you get an error saying the table already exists you may want to carfully decide to drop the existing table. This can be done in pgAdmin by using the drop function in the context menu.
 
-![](../pics/drop.png)
+![](../pics/table_drop.png)
 
 If you now run the SQL to generate the table you may need to refresh the folder structure to see your newly generated table.
 
