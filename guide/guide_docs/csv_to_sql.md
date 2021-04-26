@@ -22,7 +22,7 @@ vVA_mps float,
 vOV_mps float);
 ```
 
-Copy the csv data into the table using the copy command and using a delimiter. The header command prevents the first row being copied over. For example here I point to my Download folder where I have my data saved in the right format.
+Copy the csv data into the table using the copy command and using a delimiter. The header command prevents the first row being copied over. For example here I point to my Download folder where I have my data saved in the right format. You can find the sample data in the 'samples' folder.
 
 ``` sql
 copy sim_log.dcd_lookup
@@ -39,4 +39,4 @@ SELECT * FROM sim_log.dcd_lookup
 
 Here is how it should look in the table view of pgAdmin.
 
-![](csv_to_sql.png)
+![](../pics/csv_to_sql.png)
