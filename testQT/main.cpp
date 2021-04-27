@@ -622,7 +622,7 @@ int main()
     bool verbose_check  = true;
     bool verbose = false;
     bool diag = false;
-    bool genDynamicShapes = true;
+    bool genDynamicShapes = false;
 
     double pi = 3.14159265359;
 
@@ -640,7 +640,7 @@ int main()
     QSqlQueryModel model; //create model for queries
 
     //create database tables
-    QString schema="overtaking";
+    QString schema="sim_log";
     db_tables(model, schema, true);
 
     //Open agent config file
@@ -698,7 +698,9 @@ int main()
     //testLog.read_file(simLogFile, true); //for UE4 log
 //    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
 //    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla testbench
-    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
+//    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
+    std::ifstream simLogFile ("assertion_case_study/sim_log/all_data.txt");
+    testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla logs
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
@@ -715,6 +717,7 @@ int main()
 
     int* agentsListID      = new int[nS];
     std::vector<std::string> agentsListType;
+    int* agentListNo       = new int[nS];
     int* agentsListTypeNo  = new int[nS];
     double* agentsSimTime  = new double[nS];
     double* agentsListLen  = new double[nS];
@@ -728,6 +731,7 @@ int main()
 
         unsigned long curr_ID;
         curr_ID = testLog.my_records[i].agentTypeNo;
+        agentListNo[i] = testLog.my_records[i].agentNo;
         agentsListID[i] = testLog.my_records[i].agentID;
         agentsListType.push_back(testLog.my_records[i].agentType);
         agentsListTypeNo[i] = testLog.my_records[i].agentTypeNo;
@@ -740,8 +744,9 @@ int main()
             if(i==0)qDebug("Using cyclical time for sim data");
         }
         agentPosX[i] = testLog.my_records[i].simX;
+        //agentPosY[i] = testLog.my_records[i].simY;
         agentPosY[i] = -1 * testLog.my_records[i].simY;     //NB y-coordiante is revered here
-//        agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
+        //agentYawList[i] = -1 * testLog.my_records[i].simYaw;//NB Need to reflect rotation in x-axis
         agentYawList[i] = testLog.my_records[i].simYaw;//********************************
         agentSpeed[i]   = testLog.my_records[i].speed;
 
@@ -764,7 +769,7 @@ int main()
             qDebug() << "vect_len[0] " << vect_len[0];
             qDebug() << "vect_len[curr_ID] " << vect_len[curr_ID];
             qDebug() << "testLog.my_records[i].simYaw " << testLog.my_records[i].simYaw;
-            qDebug() << "agentYawList[i] " << agentYawList[curr_ID];
+            qDebug() << "agentYawList[i] " << agentYawList[i];
          }
     }
     loop = nS;
@@ -773,9 +778,9 @@ int main()
 
 
 // ~~~~~~~~~~~~~~~~~~~~ add sim data to database ~~~~~~~~~~~~~~~~~~
-    // Map Integration ----------------------------------------
+
     std::cout << "\n*********************"<< std::endl;
-    std::cout << " OSM Map Integration "<< std::endl;
+    std::cout << " Sim Data Upload"<< std::endl;
     std::cout << "*********************"<< std::endl;
 
     for (unsigned long sc=0;sc<loop;sc++)
@@ -794,10 +799,8 @@ int main()
 
         //double minlon = -2.500172, minlat = 51.489233; //For clifton triangle
 //        double minlon = -2.499825, minlat = 51.489065; //for Double Mini_Roundabout
-        double minlon = -2.499825, minlat = 51.489030; //for testB
-//        double minlon = -2.520524, minlat = 51.505532; //for CrossRoad test
-        //double minlon = agentPosLon[sc];
-        //double minlat = agentPosLat[sc];
+//        double minlon = -2.499825, minlat = 51.489030; //for testB
+        double minlon = -2.512869, minlat = 51.485902; //for overtaking assertion downend road
 
 
         //get rotated coordinates
@@ -816,11 +819,11 @@ int main()
         rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], rad_format, diag, scale);
         double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
 
-        if(verbose){
-            qDebug() << "#OSM Update Position# x1" << x1 << "y1" << y1; //xy vals are truncated losing precision
-            qDebug() << "#OSM Update Position# x2" << x2 << "y2" << y2; //TODO
-            qDebug() << "#OSM Update Position# x3" << x3 << "y3" << y3; // use formatted strings
-            qDebug() << "#OSM Update Position# x4" << x4 << "y4" << y4;
+        if(verbose_check and sc<1){
+            qDebug() << "#Sim Data Upload# x1" << x1 << "y1" << y1; //xy vals are truncated losing precision
+            qDebug() << "#Sim Data Upload# x2" << x2 << "y2" << y2; //TODO
+            qDebug() << "#Sim Data Upload# x3" << x3 << "y3" << y3; // use formatted strings
+            qDebug() << "#Sim Data Upload# x4" << x4 << "y4" << y4;
         }
 
         //Note x is longitude and y is latitude for the postGIS functions that use lat/long directly
@@ -836,11 +839,11 @@ int main()
         x2 = x2/m_per_deg_lon + minlon; y2 = y2/m_per_deg_lat + minlat;
         x3 = x3/m_per_deg_lon + minlon; y3 = y3/m_per_deg_lat + minlat;
         x4 = x4/m_per_deg_lon + minlon; y4 = y4/m_per_deg_lat + minlat;
-        if(verbose){
-                qDebug() << "#OSM Lat/Lon Transform# x1" << x1 << "y1" << y1;
-                qDebug() << "#OSM Lat/Lon Transform# x2" << x2 << "y2" << y2;
-                qDebug() << "#OSM Lat/Lon Transform# x3" << x3 << "y3" << y3;
-                qDebug() << "#OSM Lat/Lon Transform# x4" << x4 << "y4" << y4;
+        if(verbose_check and sc<1){
+                qDebug() << "#Sim Data Transform# x1" << x1 << "y1" << y1;
+                qDebug() << "#Sim Data Transform# x2" << x2 << "y2" << y2;
+                qDebug() << "#Sim Data Transform# x3" << x3 << "y3" << y3;
+                qDebug() << "#Sim Data Transform# x4" << x4 << "y4" << y4;
         }
         
         // build string
@@ -850,7 +853,8 @@ int main()
         q1 = "INSERT INTO "+schema+".actors (";
         q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
         //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
-        qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
+        //qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
+        qAT =QStringLiteral("%1, %2, %3").arg(agentListNo[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]); //changed from agentID to agentNo
         q3 = ", ST_GeomFromText('POLYGON((";
         q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
                         arg(x1,10,'f',7).arg(y1,10,'f',7).arg(x2,10,'f',7).arg(y2,10,'f',7).
@@ -907,7 +911,7 @@ int main()
         //----------------------------------------------
         // repeat for precondition zone
         double *zp;
-        zone = "precondition";
+        zone = "thinking";
         zp = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag, scale);
         x1=zp[0];x2=zp[1];x3=zp[2];x4=zp[3];y1=zp[4];y2=zp[5];y3=zp[6];y4=zp[7];
 
@@ -1059,19 +1063,19 @@ int main()
 //      TODO maybe add Experiment number to the log file to easily summarise
 //      between different types and actors?
 
-    // Create table for Stats
-    QString sql_string;
-    sql_string = "DROP TABLE IF EXISTS "+schema+".stats";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "stats table deleted...";
-    sql_string = "create table "+schema+".stats (exp_no int primary key, hazard_actor varchar(255), orientation float, "
-                 "pod_route varchar(255), grid_posn_w float, no_near_miss int, no_collision int)"; //
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# assertions table created...";
+//    // Create table for Stats
+//    QString sql_string;
+//    sql_string = "DROP TABLE IF EXISTS "+schema+".stats";
+//    model.setQuery(sql_string);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "stats table deleted...";
+//    sql_string = "create table "+schema+".stats (exp_no int primary key, hazard_actor varchar(255), orientation float, "
+//                 "pod_route varchar(255), grid_posn_w float, no_near_miss int, no_collision int)"; //
+//    model.setQuery(sql_string);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "#db_tables# assertions table created...";
 
     // summarise experiment data
     //      sum(case when near_miss is False then 1 else 0 end) as no_near_miss,

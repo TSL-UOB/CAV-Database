@@ -1,0 +1,4 @@
+testNo = 0 Safe
+testNo = 1 NearMiss
+testNo = 2 Crash
+

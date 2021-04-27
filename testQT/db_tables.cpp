@@ -26,22 +26,22 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
     sql_string = "CREATE TYPE vehicles AS ENUM ('AV', 'car', 'pedestrian', 'hgv', 'cyclist', 'smallcar')";
     model.setQuery(sql_string);
 
-    // ~~~~~~~~~~~~~~~~~~~~ STATUS~~~~~~~~~~~~~~~~~~
-    sql_string = "DROP TABLE IF EXISTS "+schema+".status";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# status deleted...";
+//    // ~~~~~~~~~~~~~~~~~~~~ STATUS~~~~~~~~~~~~~~~~~~
+//    sql_string = "DROP TABLE IF EXISTS "+schema+".status";
+//    model.setQuery(sql_string);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "#db_tables# status deleted...";
 
-    // Make polygons table
-    // sql_string = "create table "+schema+".status (agent_id int, agent_type vehicles, sim_time float, "
-    // "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-    sql_string = "create table "+schema+".status (agent_id int, agent_type int, sim_time float, "
-                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "#db_tables# status created...";
+//    // Make polygons table
+//    // sql_string = "create table "+schema+".status (agent_id int, agent_type vehicles, sim_time float, "
+//    // "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+//    sql_string = "create table "+schema+".status (agent_id int, agent_type int, sim_time float, "
+//                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+//    model.setQuery(sql_string);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "#db_tables# status created...";
 
 //    // ~~~~~~~~~~~~~~~~~~~~ ASSERTION ~~~~~~~~~~~~~~~~~~
 //    // Create table for Assertion tests
@@ -117,14 +117,14 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
     if(diag) qDebug() << "#db_tables# braking created...";
 
     //-------------------------------------------
-    // Create dynamic data table for Precondition Zone
-    sql_string = "DROP TABLE IF EXISTS "+schema+".precondition";
+    // Create dynamic data table for Thinking Zone
+    sql_string = "DROP TABLE IF EXISTS "+schema+".thinking";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "precondition zone table deleted...";
 
-    sql_string = "create table "+schema+".precondition (agent_id int, agent_type int, sim_time float, "
+    sql_string = "create table "+schema+".thinking (agent_id int, agent_type int, sim_time float, "
                  "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
