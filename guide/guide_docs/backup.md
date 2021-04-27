@@ -35,3 +35,7 @@ To restore from a backup right click on your server and click Create then Databa
 Then select the pgadmin backup file and the same user role. Note that this is not compatible with the 'Linux Command Line' backup file.
 
 ![](../pics/restore_pga_complete.png)
+
+Now expand the tree to see the tables, then select 'actors' and right click then select 'view data' and 'all rows'. Then click the 'eye' icon in the geometry column to see the geospatial data.
+
+![](../pics/restore_actors_map.png)
