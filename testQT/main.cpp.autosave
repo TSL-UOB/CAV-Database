@@ -311,7 +311,7 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
     //yaw to radians conversion if necessary
     double rads;
     if(rad_format){
-        rads = yaw; //no conversion required from UE4
+        rads = yaw; //no conversion required
     }else{
         rads = yaw * 3.141592653 / 180;
     }
