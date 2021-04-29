@@ -6,6 +6,7 @@ Here is an overview of the guides for using SQL and POSTGIS for assertion testin
 2. Generating map data [link](guide_docs/maps.md)
 3. Linking a csv to your database [link](guide_docs/csv_to_sql.md)
 4. Saving and Restoring database backup [link](guide_docs/backup.md)
-5. Performing an assertion test [link](guide_docs/braking_zone.md)
-6. A C++ connection guide
+5. Adding lanelets (manual) to the DB [link](guide_docs/lanelets.md)
+6. Performing an assertion test [link](guide_docs/braking_zone.md)
+7. A C++ connection guide
 7. Sending SQL queries from C++

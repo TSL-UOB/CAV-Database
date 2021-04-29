@@ -31,4 +31,4 @@ testLog.read_file_testbench (simLogFile, true);
 ...
 ```
 
-
+Further in the script there is section for dynamic shape generation (line 869 main.cpp) which will analyse the speed of each actor and maximum deceleration

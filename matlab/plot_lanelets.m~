@@ -119,10 +119,10 @@ for id_index = 1: numel(unique_IDs)
     end
     
     SRID = 4326;
-    h1 = "insert into sim_log.lanelets (lanelet_id, geom) VALUES ("
+    h1 = "insert into sim_log.lanelets (lanelet_id, geom) VALUES ( "
     
     lane_id = sprintf("%d, ",laneletID);
-    top = "ST_GeomFromText('POLYGON((";
+    top = "SELECT ST_GeomFromText('POLYGON((";
     tail = sprintf("))', %4.0f)",SRID);
     SQL_query = strcat(h1, lane_id, top, GPS_str, tail,")")
     print("pause to copy data...")
