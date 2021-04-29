@@ -311,7 +311,7 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
     //yaw to radians conversion if necessary
     double rads;
     if(rad_format){
-        rads = yaw; //no conversion required from UE4
+        rads = yaw; //no conversion required
     }else{
         rads = yaw * 3.141592653 / 180;
     }
@@ -622,7 +622,7 @@ int main()
     bool verbose_check  = true;
     bool verbose = false;
     bool diag = false;
-    bool genDynamicShapes = true;
+    bool genDynamicShapes = false;
 
     double pi = 3.14159265359;
 
@@ -797,8 +797,9 @@ int main()
         //double minlon = -2.500172, minlat = 51.489233; //For clifton triangle
 //        double minlon = -2.499825, minlat = 51.489065; //for Double Mini_Roundabout
 //        double minlon = -2.499825, minlat = 51.489030; //for testB
-        double minlon = -2.512869, minlat = 51.485902; //for overtaking assertion downend road
 
+      //double minlon = -2.512869, minlat = 51.485902; //for overtaking assertion downend road
+        double minlon = -2.512495, minlat = 51.486073; //for overtaking assertion downend road
 
         //get rotated coordinates
         double *rc;
