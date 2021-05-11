@@ -2,3 +2,6 @@ testNo = 0 Safe
 testNo = 1 NearMiss
 testNo = 2 Crash
 
+testNo = 0 Safe sim_time = 2399.336 : 2432.736
+testNo = 1 NearMiss, sim_time = 815.136 : 850.136
+testNo = 2 Crash, sim_time = 2165.786 : 2184.886

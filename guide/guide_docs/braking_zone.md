@@ -32,3 +32,20 @@ testLog.read_file_testbench (simLogFile, true);
 ```
 
 Further in the script there is section for dynamic shape generation (line 869 main.cpp) which will analyse the speed of each actor and maximum deceleration
+
+
+Notes on how to add assertions to a table. Here g1.agent_id must be the agentNo in the simulation log file for the AV. The code will test the assertion for the AV with respect to every other vehicle. 
+
+``` sql
+insert into sim_log.assertions
+(agent_id, sim_time, near_miss, collision, haz_distance)
+Select
+g2.agent_id, g2.sim_time, 
+not ST_Distance(g1.geom::geography,g2.geom::geography) < 0.5 AS near_miss,
+not ST_Distance(g1.geom::geography,g2.geom::geography) < 0.01 AS collision,
+ST_Distance(g1.geom::geography,g2.geom::geography) as haz_distance
+FROM
+sim_log.map_config g1, sim_log.map_config g2
+WHERE g1.agent_id = 2 AND g2.agent_id != 2 
+AND g1.sim_time = 0.1 AND g2.sim_time = 0.1
+```
