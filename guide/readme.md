@@ -35,3 +35,5 @@ WHERE g1.sim_time = 81513.6
 Now lets observe this new data in Qgis.
 
 ![](../pics/single_time.png)
+
+Now add in the road network and buildings. 
