@@ -9,7 +9,7 @@ create table sim_log.frame (agent_id int, agent_type int, sim_time float,
 PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))
 ```
 
-Then create a filter statement that will allow us to take the actor states from a single time. 
+Then create a filter statement that will allow us to take the actor states from a single time. For the sample data given this is the first time point in the sim log and shows the starting locations of the vehicles.
 
 ``` sql
 insert into sim_log.frame
@@ -21,7 +21,7 @@ sim_log.actors g1
 WHERE g1.sim_time = 81513.6
 ```
 
-Now lets observe this new data in Qgis.
+Now lets observe this new data in Qgis by rendering the frame table and adding the lanelets shape data too.
 
 ![](../pics/single_time.png)
 
