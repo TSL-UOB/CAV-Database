@@ -11,6 +11,8 @@
 #include <iomanip> //setprecision
 #include "uepostgis.h"
 #include <tuple>
+#include <unistd.h> //for pause timer
+#include <iterator> //for vector indexing
 
 #include "readsimlog.h"
 
@@ -68,7 +70,8 @@ double check_agent_overlap(QSqlQueryModel& model, QString schema,QString A, QStr
                 " and "<<B<<" overlap? " << agent_overlap << endl;
     return agent_overlap;
 }
-double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, int A_ty, int B_id, int B_ty, double sim_time, bool diag=true)
+double ass_check_agent_overlap(QSqlQueryModel& model, QString schema,int A_id, int A_ty,
+                               int B_id, int B_ty, double sim_time, bool diag=true)
 {
     QString qs, q1, q2, q3;
     q1 = "select ST_Overlaps(g1.geom,g2.geom) "
@@ -105,7 +108,8 @@ double check_agent_contains(QSqlQueryModel& model, QString schema,QString A, QSt
                 " completely contain "<<B<<"? " << agent_contains << endl;
     return agent_contains;
 }
-void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, double agentWidth, double agentLength, bool diag=true)
+void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, double agentWidth,
+               double agentLength, bool diag=true)
 {
 // Add agents to database lookup table
     QString qs, q1, q2, q3;
@@ -118,7 +122,8 @@ void add_agent(QSqlQueryModel& model, QString schema,std::string agentType, doub
         qDebug() << "\033[0;31m#add_agent# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "#add_agent# Database updated:"  << qs;
 }
-void update_agent_position(QSqlQueryModel& model, QString schema,std::string agentType, double x1, double y1,double agLengt, double agWidth, bool diag=true)
+void update_agent_position(QSqlQueryModel& model, QString schema,std::string agentType,
+                           double x1, double y1,double agLengt, double agWidth, bool diag=true)
 {
 // Update agent position
     double x2, y2;
@@ -147,7 +152,8 @@ std::tuple<double, double> rotate_coords(double x, double y, double yaw, bool di
         qDebug() << "#rotate_coords# coordinates rotated";
     return std::make_tuple(xd,yd);
 }
-void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string, bool diag=true)
+void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string,
+                                 bool diag=true)
 {
 // Update agent position - BATCH VERSION
 // INSERT INTO db (ID,NAME) VALUES (4, 'Mark'), (5, 'David'), (6, 'Ken') etc...
@@ -159,7 +165,9 @@ void update_agent_position_batch(QSqlQueryModel& model, std::string batch_string
     if(diag)
         qDebug() << "#update_agent_position_batch# batch update";
 }
-void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_typ, double sim_time,double ag_len, double ag_wid, double posX, double posY, double yaw_deg, bool diag=true)
+void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_typ,
+                        double sim_time,double ag_len, double ag_wid, double posX,
+                        double posY, double yaw_deg, bool diag=true)
 {
 // Create shapes from position, type and orientation
     //yaw to radians
@@ -214,7 +222,8 @@ void update_agent_shape(QSqlQueryModel& model, QString schema,int ag_id, int ag_
     if(diag)
         qDebug() << "#update_agent_shape# agent shape update";
 }
-double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw, bool rad_format=true, bool diag=true, double scale = 1)
+double * return_coords(double ag_len, double ag_wid, double posX, double posY, double yaw,
+                       bool rad_format=true, bool diag=true, double scale = 1)
 {
 //Get rotated coords from agent pos and shape
     static double return_coordiantes[10];
@@ -261,7 +270,9 @@ double * return_coords(double ag_len, double ag_wid, double posX, double posY, d
 
     return return_coordiantes;
 }
-void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID, int agentsTypeNo, double SimTime, double * geo, int SRID = 4326, bool verbose=false)
+void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID,
+               int agentsTypeNo, double SimTime, double * geo, int SRID = 4326,
+               bool verbose=false)
 {
     // dump new zone coords in a table
     double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
@@ -283,7 +294,9 @@ void draw_geom(QSqlQueryModel& model, QString schema, QString zone, int agentID,
             qDebug() << "\033[0;31m#update_agent_shape# " << model.lastError()<<"\033[0m";
     if(verbose) qDebug() << "#update_agent_shape# agent shape update";
 }
-double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y2,double y3,double y4,double m_per_deg_lon,double m_per_deg_lat, double minlon, double minlat)
+double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y2,double y3,
+                      double y4,double m_per_deg_lon,double m_per_deg_lat,
+                      double minlon, double minlat)
 {
 //std::tuple<float,float,float,float,float,float,float,float> carla_to_geo(float x1,float x2,float x3,float x4,float y1,float y2,float y3,float y4,float m_per_deg_lon,float m_per_deg_lat, float minlon, float minlat)
     static double return_coordiantes[10];
@@ -303,7 +316,10 @@ double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y
 
     return return_coordiantes;
 }
-double * zone_coords(double braking_distance, double velocity, double ag_len, double ag_wid, double posX, double posY, double yaw, QString zone_type, bool rad_format=false, bool diag=true, double scale=1)
+double * zone_coords(double braking_distance, double velocity, double ag_len,
+                     double ag_wid,
+                     double posX, double posY, double yaw, QString zone_type,
+                     bool rad_format=false, bool diag=true, double scale=1)
 {
 //Get rotated coords from agent pos and shape
     static double return_coordiantes[10];
@@ -384,7 +400,11 @@ double * zone_coords(double braking_distance, double velocity, double ag_len, do
 
     return return_coordiantes;
 }
-void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[], int ag_typ[], double sim_time, int nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[], bool diag=true)
+void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[],
+                              int ag_typ[],
+                              double sim_time, int nA,double ag_len[],
+                              double ag_wid[], double posX[], double posY[],
+                              double yaw_deg[], bool diag=true)
 {
     //call the coordinates
 // Update agent position - BATCH VERSION
@@ -419,7 +439,12 @@ void update_agent_shape_batch(QSqlQueryModel& model, QString schema, int ag_id[]
     if(diag)
         qDebug() << "#update_agent_shape_batch# " << qs;
 }
-void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_id[], unsigned long ag_typ[], double sim_time, unsigned long nA,double ag_len[], double ag_wid[], double posX[], double posY[], double yaw_deg[],std::vector<double>& agWidth_lookup, std::vector<double>& agLengt_lookup, bool diag=true)
+void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_id[],
+    unsigned long ag_typ[], double sim_time, unsigned long nA,double ag_len[],
+                                 double ag_wid[],
+                                 double posX[], double posY[], double yaw_deg[],
+                                 std::vector<double>& agWidth_lookup,
+                                 std::vector<double>& agLengt_lookup, bool diag=true)
 {
 // updated to include width/length selection from enum list
     //Update the width/length based on the agent ID
@@ -462,7 +487,9 @@ void update_agent_shape_batch_ID(QSqlQueryModel& model, QString schema, int ag_i
     if(diag)
         qDebug() << "#update_agent_shape_batch_ID# " << qs;
 }
-void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time, std::vector<double>& agWidth_lookup,std::vector<double>& agLengt_lookup, unsigned long nA = 10, bool diag=true)
+void update_test_batch(QSqlQueryModel& model, QString schema, double sim_time,
+                       std::vector<double>& agWidth_lookup,std::vector<double>& agLengt_lookup,
+                       unsigned long nA = 10, bool diag=true)
 {
 //batch mode string updater - set number of random agents nA
     std::string agType_lookup[5] = {"AV","car","ped","hgv","cyclist"};  // to access use agent_type[0] etc.
@@ -696,15 +723,21 @@ int main()
     readSimLog testLog;
     std::string line;
     //testLog.read_file(simLogFile, true); //for UE4 log
-//    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla (simLogFile, true); bool useCyclicTime = false;//for carla logs
-//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;//for carla testbench
-//    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true; bool rad_format=false;//for carla logs
-    std::ifstream simLogFile ("assertion_case_study/sim_log/all_data.txt");testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true; bool rad_format=true;//for AItest21 paper
+//    std::ifstream simLogFile ("TEST004_short.txt");testLog.read_file_carla
+//    (simLogFile, true); bool useCyclicTime = false;//for carla logs
+//    std::ifstream simLogFile ("logging_example_v2.txt");testLog.read_file_testbench
+//    (simLogFile, true); bool useCyclicTime = true;//for carla testbench
+//    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench
+//    (simLogFile, true); bool useCyclicTime = true; bool rad_format=false;//for carla logs
+    std::ifstream simLogFile ("assertion_case_study/sim_log/all_data.txt");
+    testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;
+    bool rad_format=true;//for AItest21 paper
 
-    //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "<<testLog.my_records[2].simTime<<" is at XY " <<
+    //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "
+//    <<testLog.my_records[2].simTime<<" is at XY " <<
     //            testLog.my_records[2].simX<<" "<<testLog.my_records[2].simY<<std::endl;
 
-    // Add this to the log file to generate marks tht ensure the pgAdmin view stays centrered at the same location
+    // Add this to the log file to generate marks tht ensure the pgAdmin view stays centrered
     //1, 1, 0,  marker1,		2, 0, 20, 1200, 1627, 0, 0
     //1, 1, 1,  marker2,		2, 0, 20, 1200, 1733, 0, 0
     //1, 1, 2,  marker3,		2, 0, 20, 1250, 1627, 0, 0
@@ -735,7 +768,8 @@ int main()
         agentsListType.push_back(testLog.my_records[i].agentType);
         agentsListTypeNo[i] = testLog.my_records[i].agentTypeNo;
         if (not useCyclicTime){
-            agentsSimTime[i] = testLog.my_records[i].simTime; //**** if cyclic time gives primary key errors, use wall-clock
+            agentsSimTime[i] = testLog.my_records[i].simTime;
+            //**** if cyclic time gives primary key errors, use wall-clock
             if(i==0)qDebug("Using standard time for sim data");
         }
         if(useCyclicTime){
@@ -814,21 +848,25 @@ int main()
         }
 
         double scale = 1; //drawing scale for geom
-        rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], rad_format, diag, scale);
+        rc = return_coords(agentsListLen[sc], agentsListWid[sc], agentPosX[sc],
+                           agentPosY[sc], agentYawList[sc], rad_format, diag, scale);
         double x1=rc[0],x2=rc[1],x3=rc[2],x4=rc[3],y1=rc[4],y2=rc[5],y3=rc[6],y4=rc[7];
 
         if(verbose_check and sc<1){
-            qDebug() << "#Sim Data Upload# x1" << x1 << "y1" << y1; //xy vals are truncated losing precision
-            qDebug() << "#Sim Data Upload# x2" << x2 << "y2" << y2; //TODO
-            qDebug() << "#Sim Data Upload# x3" << x3 << "y3" << y3; // use formatted strings
+            qDebug() << "#Sim Data Upload# x1" << x1 << "y1" << y1;
+            qDebug() << "#Sim Data Upload# x2" << x2 << "y2" << y2;
+            qDebug() << "#Sim Data Upload# x3" << x3 << "y3" << y3;
             qDebug() << "#Sim Data Upload# x4" << x4 << "y4" << y4;
         }
 
         //Note x is longitude and y is latitude for the postGIS functions that use lat/long directly
 
-        double latMid = 51.582838; //use this as rough approximation but could do better for big maps >60 miles
-        double m_per_deg_lat = 111132.92 - 559.82*cos(2*latMid*pi/180) + 1.175*cos(4*latMid*pi/180) - 0.0023*cos(6*latMid*pi/180);
-        double m_per_deg_lon = 111412.84*cos(latMid*pi/180) - 93.5*cos(3*latMid*pi/180) + 0.118*cos(5*latMid*pi/180);
+        double latMid = 51.582838; //use this as rough approximation but could do
+//        better for big maps >60 miles
+        double m_per_deg_lat = 111132.92 - 559.82*cos(2*latMid*pi/180) +
+                1.175*cos(4*latMid*pi/180) - 0.0023*cos(6*latMid*pi/180);
+        double m_per_deg_lon = 111412.84*cos(latMid*pi/180) - 93.5*cos(3*latMid*pi/180) +
+                0.118*cos(5*latMid*pi/180);
         if(verbose) std::cout << "m_per_deg_lat = " << m_per_deg_lat <<"\n";
         if(verbose) std::cout << "m_per_deg_lon = " << m_per_deg_lon <<"\n";
 
@@ -850,13 +888,13 @@ int main()
         QString qs, q1, q2, q3, q4, qAT;
         q1 = "INSERT INTO "+schema+".actors (";
         q2 = "agent_id, agent_type, sim_time, geom) VALUES (";
-        //qAT =QStringLiteral("%1, '%2', %3").arg(ag_id).arg(QString::fromStdString(agentsTypeList[sc])).arg(agentsSimTime[sc]);
-        //qAT =QStringLiteral("%1, %2, %3").arg(agentsListID[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]);
-        qAT =QStringLiteral("%1, %2, %3").arg(agentListNo[sc]).arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]); //changed from agentID to agentNo
+        qAT =QStringLiteral("%1, %2, %3").arg(agentListNo[sc]).
+                arg(agentsListTypeNo[sc]).arg(agentsSimTime[sc]); //changed from agentID to agentNo
         q3 = ", ST_GeomFromText('POLYGON((";
         q4 = QStringLiteral(" %1 %2, %3 %4, %5 %6, %7 %8, %1 %2))', %9))").
                         arg(x1,10,'f',7).arg(y1,10,'f',7).arg(x2,10,'f',7).arg(y2,10,'f',7).
-                        arg(x3,10,'f',7).arg(y3,10,'f',7).arg(x4,10,'f',7).arg(y4,10,'f',7).arg(SRID);
+                        arg(x3,10,'f',7).arg(y3,10,'f',7).arg(x4,10,'f',7).arg(y4,10,'f',7).
+                        arg(SRID);
         qs = q1 + q2 + qAT + q3 + q4;
 
         // send string
@@ -878,7 +916,7 @@ int main()
         }
 
         // check if vehicle, type? use index of agent_config.txt
-        // 0=pod, 1=adult, 2=child, 3=AV, 4=cav, 5=hgv, 6=cyclist, 7=aygo - *************** check that CARLA logs write this correctly
+        // 0=pod, 1=adult, 2=child, 3=AV, 4=cav, 5=hgv, 6=cyclist, 7=aygo
 
         // find speed and maximum deceleration, should be ~3 m/s^2
         double maximum_deceleration = vect_amax.at(agentsListTypeNo[sc]);
@@ -893,7 +931,9 @@ int main()
         // for each vehicle type, re-draw the polygon with delta-offset
         double *zb;
         QString zone = "braking";
-        zb = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag, scale);
+        zb = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc],
+                         agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format,
+                         diag, scale);
         double x1=zb[0],x2=zb[1],x3=zb[2],x4=zb[3],y1=zb[4],y2=zb[5],y3=zb[6],y4=zb[7];
 
         //convert to lat long
@@ -902,7 +942,8 @@ int main()
         //double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
 
         // draw geometry to table
-        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
+        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc],
+                  agentsSimTime[sc], geo, SRID, verbose);
 
 
 
@@ -910,7 +951,9 @@ int main()
         // repeat for precondition zone
         double *zp;
         zone = "thinking";
-        zp = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc], agentPosX[sc], agentPosY[sc], agentYawList[sc], zone, rad_format, diag, scale);
+        zp = zone_coords(braking_distance, velocity, agentsListLen[sc], agentsListWid[sc],
+                         agentPosX[sc], agentPosY[sc], agentYawList[sc], zone,
+                         rad_format, diag, scale);
         x1=zp[0];x2=zp[1];x3=zp[2];x4=zp[3];y1=zp[4];y2=zp[5];y3=zp[6];y4=zp[7];
 
         //convert to lat long
@@ -918,7 +961,8 @@ int main()
         //double gx1=geo[0],gx2=geo[1],gx3=geo[2],gx4=geo[3],gy1=geo[4],gy2=geo[5],gy3=geo[6],gy4=geo[7];
 
         // draw geometry to table
-        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc], agentsSimTime[sc], geo, SRID, verbose);
+        draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc],
+                  agentsSimTime[sc], geo, SRID, verbose);
 
         //----------------------------------------------
         // Maybe have this as a separate file that is
@@ -973,24 +1017,31 @@ int main()
 // For WP4 Demo - using test003.txt
 //select * FROM agents.map_test as g1
 //where
-//((g1.sim_time = 24.0) and ((g1.agent_id = 100) OR (g1.agent_id = 102) OR (g1.agent_id = 99) OR (g1.agent_id = 146) OR (g1.agent_id = 123)
+//((g1.sim_time = 24.0) and ((g1.agent_id = 100) OR (g1.agent_id = 102)
+//    OR (g1.agent_id = 99) OR (g1.agent_id = 146) OR (g1.agent_id = 123)
 //OR (g1.agent_id = 111) OR (g1.agent_id = 113)))
-//OR ((g1.sim_time = 0) and ((g1.agent_id = 550508837) OR (g1.agent_id = 550508846) OR (g1.agent_id = 551154786)))
+//OR ((g1.sim_time = 0) and ((g1.agent_id = 550508837) OR
+//    (g1.agent_id = 550508846) OR (g1.agent_id = 551154786)))
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // For MO Demo - testA TEST_A_OUTPUT_Markers.txt
 //    Use this and iterate the time to show the vehicles moving
 //    set AV to agent_id 74 in assertions and set sd to 0.000007 in the asr_02 call
-//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and ((g1.agent_id = 74) OR (g1.agent_id = 75) OR (g1.agent_id = 76)))
-//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR (g1.agent_id = 2) OR  (g1.agent_id > 76)))
+//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and
+//    ((g1.agent_id = 74) OR (g1.agent_id = 75) OR (g1.agent_id = 76)))
+//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR
+//            (g1.agent_id = 2) OR  (g1.agent_id > 76)))
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // For MO Demo - testC2 TEST_C2_crash_OUTPUT.txt
 //    Use this and iterate the time to show the vehicles moving
 //    Set AV to agent_id 32,
-//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and ((g1.agent_id = 32) OR (g1.agent_id = 33) OR (g1.agent_id = 34) OR (g1.agent_id = 35) OR (g1.agent_id = 36) OR (g1.agent_id = 37)))
-//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1) OR (g1.agent_id = 2) OR (g1.agent_id = 3) OR  (g1.agent_id > 37)))
+//    select * FROM agents.map_test as g1 where ((g1.sim_time = 6.0) and
+//    ((g1.agent_id = 32) OR (g1.agent_id = 33) OR (g1.agent_id = 34) OR
+//            (g1.agent_id = 35) OR (g1.agent_id = 36) OR (g1.agent_id = 37)))
+//    OR ((g1.sim_time = 0) and ((g1.agent_id = 0) OR (g1.agent_id = 1)
+//    OR (g1.agent_id = 2) OR (g1.agent_id = 3) OR  (g1.agent_id > 37)))
 
 
     // ASSERION TESTING ----------------------------------------
@@ -1004,7 +1055,8 @@ int main()
 //    ST_Distance(g1.geom::geography,g2.geom::geography) < 1.5
 //    AS asr_result
 //    FROM agents.status g1, agents.status g2--, public.dmr_uk_fit p1
-//    WHERE g1.agent_id = 100 AND g2.agent_id != 100 AND g1.sim_time = 24.0 AND g2.sim_time = 24.0
+//    WHERE g1.agent_id = 100 AND g2.agent_id != 100 AND
+//    g1.sim_time = 24.0 AND g2.sim_time = 24.0
 //    -- AND g3.sim_time = 24.0
 
 
@@ -1033,10 +1085,11 @@ int main()
         //use asr_02 for bespoke hazard distance
         double near_miss_dist = 0.5; //distance for geography needs to be in meters
         double collision_dist = 0.05; //distance for geography needs to be in meters
-        //asr_02(model, schema, sim_timer, haz_dist, 2, true); //for some reason the default values are not being read, have to declare them here
+        //asr_02(model, schema, sim_timer, haz_dist, 2, true);
         //distance_based(model,schema, target_actorID, sim_timer, near_miss_dist, 1, diag);
         //distance_based(model,schema, target_actorID, sim_timer, collision_dist, 2, diag);
-        distance_based(model,  schema, target_actorID,  sim_timer, near_miss_dist, collision_dist, diag);
+        distance_based(model,  schema, target_actorID,  sim_timer,
+                       near_miss_dist, collision_dist, diag);
 
         sim_timer = sim_timer + 0.1;
     }
@@ -1068,8 +1121,10 @@ int main()
 //    if (model.lastError().isValid())
 //        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
 //    if(diag) qDebug() << "stats table deleted...";
-//    sql_string = "create table "+schema+".stats (exp_no int primary key, hazard_actor varchar(255), orientation float, "
-//                 "pod_route varchar(255), grid_posn_w float, no_near_miss int, no_collision int)"; //
+//    sql_string = "create table "+schema+".stats (exp_no
+//    int primary key, hazard_actor varchar(255), orientation float, "
+//                 "pod_route varchar(255), grid_posn_w float,
+//    no_near_miss int, no_collision int)"; //
 //    model.setQuery(sql_string);
 //    if (model.lastError().isValid())
 //        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
@@ -1089,7 +1144,8 @@ int main()
 
 //    // build string
 //    QString qs, q1, q2, q3;
-//    q1 = "INSERT INTO "+schema+".stats (exp_no, hazard_actor, orientation, pod_route, grid_posn_w, no_near_miss, no_collision) SELECT ";
+//    q1 = "INSERT INTO "+schema+".stats (exp_no, hazard_actor,
+//    orientation, pod_route, grid_posn_w, no_near_miss, no_collision) SELECT ";
 //    q2 = QStringLiteral("1 AS exp_no, 'adult' as hazard_actor, 45 AS orientation, "
 //        "'left 45' AS pod_route, -3 AS grid_posn_w, "
 //        " sum(case when near_miss is False then 1 else 0 end) as no_near_miss, "
@@ -1113,8 +1169,83 @@ int main()
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    std::cout<<"\n*********************"<< std::endl;
+    std::cout << "    Live QGis Demo    "<< std::endl;
+    std::cout << "*********************"<< std::endl;
+    // Run through the sim log with a time step to allow qgis refresh rate to
+    // update approx 100ms.
+    bool qgisDemo = true;
 
-    qDebug() << "closing connection" << endl;
-    db.close();
-    return 0;
+if (qgisDemo){
+    std::cout << "starting QGIS demo..." << std::endl;
+    double sim_timer = 0.1;
+    double sim_time_max = nS;
+    double time_interval = 0.1;
+    unsigned int time_interval_ms = static_cast<unsigned int>(time_interval * 1000);
+    timestamp_t t0 = get_timestamp();
+
+    //first delete the table contents without dropping
+    QString qs = "delete from "+schema+".frame";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape# "
+                 << model.lastError()<<"\033[0m";
+
+    //convert array to vector
+    std::vector<double> v(agentsSimTime, agentsSimTime + nS);
+    std::vector<double>::iterator ip;
+
+    //find the unique time values then resize
+    ip = std::unique(v.begin(), v.begin() + nS);
+    v.resize(std::distance(v.begin(), ip));
+
+    //use the vector of unique times to draw actors
+    int count=0;
+    for(int i=0; i < v.size(); i++){
+
+//    if(verbose)
+        std::cout << "element "<< i << " of array = " << agentsSimTime[i*3] << std::endl;
+        std::cout << "element "<< i << " of vector = " << v[i] << std::endl;
+
+    //update the Frame table used for live updating
+    QString q1 = "insert into "+schema+".frame (agent_id, agent_type, sim_time, geom) ";
+    QString q2 = "SELECT g1.agent_id, g1.agent_type, g1.sim_time, g1.geom ";
+    QString q3 = QStringLiteral("FROM sim_log.actors g1 WHERE g1.sim_time = %1 ").arg(v[i]);
+    qs = q1 + q2 + q3;
+
+    qDebug() << "#QGIS demo# " << qs;
+
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape# "
+                 << model.lastError()<<"\033[0m";
+
+    //update the timer
+    usleep(time_interval_ms * 1000);
+    sim_timer = sim_timer + time_interval;
+    count++;
+    if(count%10==0)std::cout << "frame time " << count << std::endl;
+
+    //first delete the table contents without dropping
+    QString qs = "delete from "+schema+".frame";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#update_agent_shape# "
+                 << model.lastError()<<"\033[0m";
+    }
+
+// stop timer
+timestamp_t t1 = get_timestamp();
+double secs = (t1 - t0) / 1000000.0;
+if(diag) std::cout << "assertion checking time is :" << secs<<"s \n";
+
+}//if (qgisDemo)
+
+
+
+//======================================
+qDebug() << "closing connection" << endl;
+db.close();
+return 0;
 }
