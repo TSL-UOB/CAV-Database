@@ -1288,9 +1288,6 @@ if(gen_distance_graph){
             qDebug() << "\033[0;31m#qgisDemo# "
                      << model.lastError()<<"\033[0m";
     }
-
-
-
 }
 
 
