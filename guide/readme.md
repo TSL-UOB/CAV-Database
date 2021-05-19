@@ -9,6 +9,6 @@ Here is an overview of the guides for using SQL and POSTGIS for assertion testin
 5. Adding lanelets (manual) to the DB [link](guide_docs/lanelets.md)
 6. Performing an assertion test [link](guide_docs/braking_zone.md)
 7. Filter data for a single time point [link](guide_docs/time_filter.md)
-7. A C++ connection guide
-7. Sending SQL queries from C++
+8. A C++ connection guide
+9. Sending SQL queries from C++
 
