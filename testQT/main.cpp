@@ -1175,7 +1175,7 @@ int main()
     std::cout << "*********************"<< std::endl;
     // Run through the sim log with a time step to allow qgis refresh rate to
     // update approx 100ms.
-    bool qgisDemo = false;
+    bool qgisDemo = true;
 
 if (qgisDemo){
     std::cout << "starting QGIS demo..." << std::endl;
@@ -1222,7 +1222,7 @@ if (qgisDemo){
                  << model.lastError()<<"\033[0m";
 
     //update the timer
-//    usleep(time_interval_ms * 1000);
+    usleep(time_interval_ms * 1000);
     sim_timer = sim_timer + time_interval;
     count++;
     if(count%10==0)std::cout << "frame time " << count << std::endl;
@@ -1247,7 +1247,7 @@ if(diag) std::cout << "assertion checking time is :" << secs<<"s \n";
 
 
 
-bool gen_distance_graph = true;
+bool gen_distance_graph = false;
 if(gen_distance_graph){
     std::cout<<"\n*********************"<< std::endl;
     std::cout << "    Distance Table    "<< std::endl;
