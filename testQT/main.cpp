@@ -317,9 +317,8 @@ double * carla_to_geo(double x1,double x2,double x3,double x4,double y1,double y
     return return_coordiantes;
 }
 double * zone_coords(double braking_distance, double velocity, double ag_len,
-                     double ag_wid,
-                     double posX, double posY, double yaw, QString zone_type,
-                     bool rad_format=false, bool diag=true, double scale=1)
+            double ag_wid, double posX, double posY, double yaw, QString zone_type,
+            bool rad_format=false, bool diag=true, double scale=1)
 {
 //Get rotated coords from agent pos and shape
     static double return_coordiantes[10];
@@ -372,7 +371,7 @@ double * zone_coords(double braking_distance, double velocity, double ag_len,
         Zx3 = x3r + (braking_distance*scale * cos(rads));
         Zy3 = y3r + (braking_distance*scale * sin(rads));
     }
-    if(zone_type=="precondition"){
+    if(zone_type=="thinking"){
         //zone_start = end of the braking zone
         Zx1=x2r + (braking_distance*scale * cos(rads));
         Zy1=y2r + (braking_distance*scale * sin(rads));
@@ -649,7 +648,7 @@ int main()
     bool verbose_check  = true;
     bool verbose = false;
     bool diag = false;
-    bool genDynamicShapes = false;
+    bool genDynamicShapes = true;
 
     double pi = 3.14159265359;
 
@@ -908,7 +907,7 @@ int main()
 
         // ~~~~~~~~~~~~~~~~~~~~ Dynamic Shape Generation ~~~~~~~~~~~~~~~
         // generate dynamic shapes to help with  assertion checking
-    if(genDynamicShapes){
+        if(genDynamicShapes){
         if(sc<1){
             std::cout << "\n**************************"<< std::endl;
             std::cout << " Dynamic Shape Generation "<< std::endl;
@@ -945,7 +944,22 @@ int main()
         draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc],
                   agentsSimTime[sc], geo, SRID, verbose);
 
-
+        if(verbose){
+            qDebug() << "*** BRAKING ZONE ***";
+            qDebug() << "braking_distance       = " << braking_distance;
+            qDebug() << "velocity               = " << velocity;
+            qDebug() << "maximum_deceleration   = " << maximum_deceleration;
+            qDebug() << "agentsListLen[sc]      = " << agentsListLen[sc];
+            qDebug() << "agentsListWid[sc]      = " << agentsListWid[sc];
+            qDebug() << "agentPosX[sc]          = " << agentPosX[sc];
+            qDebug() << "agentPosY[sc]          = " << agentPosY[sc];
+            qDebug() << "agentYawList[sc]       = " << agentYawList[sc];
+            qDebug() << "zone                   = " << zone;
+            qDebug() << "rad_format             = " << rad_format;
+            qDebug() << "diag                   = " << diag;
+            qDebug() << "scale                  = " << scale;
+            qDebug() << "agentsListID[sc]       = " << agentsListID[sc];
+        }
 
         //----------------------------------------------
         // repeat for precondition zone
@@ -963,6 +977,24 @@ int main()
         // draw geometry to table
         draw_geom(model, schema, zone, agentsListID[sc], agentsListTypeNo[sc],
                   agentsSimTime[sc], geo, SRID, verbose);
+
+        if(verbose){
+            qDebug() << "*** THINKING ZONE ***";
+            qDebug() << "braking_distance       = " << braking_distance;
+            qDebug() << "velocity               = " << velocity;
+            qDebug() << "maximum_deceleration   = " << maximum_deceleration;
+            qDebug() << "agentsListLen[sc]      = " << agentsListLen[sc];
+            qDebug() << "agentsListWid[sc]      = " << agentsListWid[sc];
+            qDebug() << "agentPosX[sc]          = " << agentPosX[sc];
+            qDebug() << "agentPosY[sc]          = " << agentPosY[sc];
+            qDebug() << "agentYawList[sc]       = " << agentYawList[sc];
+            qDebug() << "zone                   = " << zone;
+            qDebug() << "rad_format             = " << rad_format;
+            qDebug() << "diag                   = " << diag;
+            qDebug() << "scale                  = " << scale;
+            qDebug() << "agentsListID[sc]       = " << agentsListID[sc];
+            }
+
 
         //----------------------------------------------
         // Maybe have this as a separate file that is
@@ -1189,8 +1221,17 @@ if (qgisDemo){
     QString qs = "delete from "+schema+".frame";
     model.setQuery(qs);
     if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#qgisDemo# "
-                 << model.lastError()<<"\033[0m";
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
+
+    qs = "delete from "+schema+".frame_braking";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
+
+    qs = "delete from "+schema+".frame_thinking";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
 
     //convert array to vector
     std::vector<double> v(agentsSimTime, agentsSimTime + nS);
@@ -1204,18 +1245,37 @@ if (qgisDemo){
     int count=0;
     for(int i=0; i < v.size(); i++){
 
-//    if(verbose)
+    if(verbose){
         std::cout << "element "<< i << " of array = " << agentsSimTime[i*3] << std::endl;
-        std::cout << "element "<< i << " of vector = " << v[i] << std::endl;
+        std::cout << "element "<< i << " of vector = " << v[i] << std::endl;}
 
     //update the Frame table used for live updating
     QString q1 = "insert into "+schema+".frame (agent_id, agent_type, sim_time, geom) ";
     QString q2 = "SELECT g1.agent_id, g1.agent_type, g1.sim_time, g1.geom ";
     QString q3 = QStringLiteral("FROM sim_log.actors g1 WHERE g1.sim_time = %1 ").arg(v[i]);
     qs = q1 + q2 + q3;
-
     qDebug() << "#QGIS demo# " << qs;
 
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "
+                 << model.lastError()<<"\033[0m";
+
+    // update the braking frame
+    q1 = "insert into "+schema+".frame_braking (agent_id, agent_type, sim_time, geom) ";
+    q2 = "SELECT g1.agent_id, g1.agent_type, g1.sim_time, g1.geom ";
+    q3 = QStringLiteral("FROM sim_log.braking g1 WHERE g1.sim_time = %1 ").arg(v[i]);
+    qs = q1 + q2 + q3; qDebug() << "#QGIS demo frame_braking# " << qs;
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "
+                 << model.lastError()<<"\033[0m";
+
+    // update the thinking frame
+    q1 = "insert into "+schema+".frame_thinking (agent_id, agent_type, sim_time, geom) ";
+    q2 = "SELECT g1.agent_id, g1.agent_type, g1.sim_time, g1.geom ";
+    q3 = QStringLiteral("FROM sim_log.thinking g1 WHERE g1.sim_time = %1 ").arg(v[i]);
+    qs = q1 + q2 + q3; qDebug() << "#QGIS demo frame_thinking# " << qs;
     model.setQuery(qs);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#qgisDemo# "
@@ -1227,12 +1287,22 @@ if (qgisDemo){
     count++;
     if(count%10==0)std::cout << "frame time " << count << std::endl;
 
-    //first delete the table contents without dropping
+    //delete the table contents again?
     QString qs = "delete from "+schema+".frame";
     model.setQuery(qs);
     if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#qgisDemo# "
-                 << model.lastError()<<"\033[0m";
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
+
+    qs = "delete from "+schema+".frame_braking";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
+
+    qs = "delete from "+schema+".frame_thinking";
+    model.setQuery(qs);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#qgisDemo# "<< model.lastError()<<"\033[0m";
+
     }
 
 // stop timer
@@ -1276,7 +1346,7 @@ if(gen_distance_graph){
     {
         //update the Frame table used for live updating
         QString q1 = "insert into "+schema+".distance_graph SELECT g2.sim_time AS time, ";
-        QString q2 = "ST_Distance(g1.geom::geography,g2.geom::geography ) ";
+        QString q2 = "ST_Distance(g1.geom::geography,g2.geom::geography) ";
         QString q3 = "FROM sim_log.actors g1, sim_log.actors g2 WHERE g1.agent_id = 1 AND g2.agent_id = 3 ";
         QString q4 = QStringLiteral("AND g1.sim_time = %1 AND g2.sim_time = %1 ").arg(v[i]);
         qs = q1 + q2 + q3 + q4;
