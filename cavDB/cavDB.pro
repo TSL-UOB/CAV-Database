@@ -21,14 +21,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    assertions.cpp \
+    db_connect.cpp \
+    db_tables.cpp \
     initmap.cpp \
     lanelettxt.cpp \
     laneletvector.cpp \
         main.cpp \
-    db_connect.cpp \
-    db_tables.cpp \
-    update_agent.cpp \
-    assertions.cpp \
     readsimlog.cpp
 
 # Default rules for deployment.
@@ -42,3 +41,6 @@ HEADERS += \
     readsimlog.h
 
 #TARGET = testQT
+
+DISTFILES += \
+    qt512.pro.user
