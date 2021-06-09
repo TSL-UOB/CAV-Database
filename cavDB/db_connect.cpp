@@ -13,6 +13,10 @@ QSqlDatabase db_connect(char userID[])
 
     // Connect to SQL Server with credentials
     QSqlDatabase db = QSqlDatabase::addDatabase("QPSQL"); //these drivers for postgres support
+
+    // if the driver fails to load try this:
+    // sudo apt install libqt5sql5-psql
+
     char user1[] = "greg";
     char user2[] = "severin";
     char user3[] = "dockerTest";
