@@ -672,7 +672,7 @@ int main()
 
     //Open agent config file
     //Ensure the file is in the local BUILD directory
-    std::ifstream myfile ("agent_config.txt");
+    std::ifstream myfile ("../data/agent_config.txt");
 
     //class for reading config
     std::cout << "Starting agent config...\n";
@@ -729,7 +729,7 @@ int main()
 //    (simLogFile, true); bool useCyclicTime = true;//for carla testbench
 //    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench
 //    (simLogFile, true); bool useCyclicTime = true; bool rad_format=false;//for carla logs
-    std::ifstream simLogFile ("assertion_case_study/sim_log/all_data.txt");
+    std::ifstream simLogFile ("../assertion_case_study/sim_log/all_data.txt");
     testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;
     bool rad_format=true;//for AItest21 paper
 

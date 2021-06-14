@@ -87,12 +87,6 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
 
     // ~~~~~~~~~~~~~~~~~~~~ Actors ~~~~~~~~~~~~~~~~~~
     // Create dynamic data table for Actors
-    sql_string = "DELETE FROM "+schema+".actors";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "actors table deleted...";
-
     sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".actors (agent_id int, agent_type int, sim_time float, "
                  "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
     model.setQuery(sql_string);
@@ -100,23 +94,37 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "#db_tables# braking created...";
 
+    sql_string = "DELETE FROM "+schema+".actors";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "actors table deleted...";
+
 
     // ~~~~~~~~~~~~~~~~~~~~ Zones~~~~~~~~~~~~~~~~~~
     // Create dynamic data table for Braking Zone
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".braking (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# braking created...";
+
     sql_string = "DELETE FROM "+schema+".braking";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "braking zone table deleted...";
 
-//    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".braking (agent_id int, agent_type int, sim_time float, "
-//                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-//    model.setQuery(sql_string);
-//    if (model.lastError().isValid())
-//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-//    if(diag) qDebug() << "#db_tables# braking created...";
-
     //-------------------------------------------
+
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".thinking (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# thinking created...";
+
     // Create dynamic data table for Thinking Zone
     sql_string = "DELETE FROM "+schema+".thinking";
     model.setQuery(sql_string);
@@ -124,23 +132,31 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "thinking zone table deleted...";
 
-//    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".thinking (agent_id int, agent_type int, sim_time float, "
-//                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-//    model.setQuery(sql_string);
-//    if (model.lastError().isValid())
-//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-//    if(diag) qDebug() << "#db_tables# thinking created...";
-
 
     //-------------------------------------------
     // Create LIVE tables for QGIS videos
 
-//    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".frame_braking (agent_id int, agent_type int, sim_time float, "
-//                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-//    model.setQuery(sql_string);
-//    if (model.lastError().isValid())
-//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-//    if(diag) qDebug() << "#db_tables# frame_braking created...";
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".frame (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# frame created...";
+
+    sql_string = "DELETE FROM "+schema+".frame";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "frame table deleted...";
+
+    //...for braking shapes ...
+
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".frame_braking (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# frame_braking created...";
 
     sql_string = "DELETE FROM "+schema+".frame_braking";
     model.setQuery(sql_string);
@@ -148,19 +164,39 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "frame_braking zone table deleted...";
 
-//    // and for THINKING...
+    // and for THINKING...
 
-//    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".frame_thinking (agent_id int, agent_type int, sim_time float, "
-//                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
-//    model.setQuery(sql_string);
-//    if (model.lastError().isValid())
-//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-//    if(diag) qDebug() << "#db_tables# frame_thinking created...";
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".frame_thinking (agent_id int, agent_type int, sim_time float, "
+                 "PRIMARY KEY (agent_id,sim_time), geom geometry(POLYGON))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# frame_thinking created...";
 
     sql_string = "DELETE FROM "+schema+".frame_thinking";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "frame_thinking  zone table deleted...";
+
+
+    //LANELETS
+
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".lanelets (lanelet_id int, geom geometry(polygon, 4326), PRIMARY KEY(lanelet_id))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# lanelets created...";
+
+//    sql_string = "DELETE FROM "+schema+".lanelets";
+//    model.setQuery(sql_string);
+//    if (model.lastError().isValid())
+//        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+//    if(diag) qDebug() << "lanelets  zone table deleted...";
+
+
+
+//    create table sim_log.lanelets (lanelet_id int, geom geometry(polygon, 4326), PRIMARY KEY(lanelet_id));
+
 
 }

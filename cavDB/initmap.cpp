@@ -17,10 +17,12 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
 
     std::string str;
     str = "osm2pgsql -d cav -H localhost -U greg_chance -P 5432 -S "
-          "/usr/local/share/osm2pgsql/default.style --hstore assertion_case_study/map_data/downend_road.osm";
+          "/usr/local/share/osm2pgsql/default.style --hstore "
+          "../assertion_case_study/map_data/downend_road.osm";
     const char *command = str.c_str();
     system(command);
-    if(diag) qDebug() << "OSM map data imported...";
+//    if(diag)
+    qDebug() << "OSM map data imported...";
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -36,7 +38,7 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
     // 2. use Abanoubs code to convert map.xml to map.txt
 
     // read in the txt file into vector format
-    std::ifstream file ("assertion_case_study/map_data/T_Junction_lanelets_bounds.txt");
+    std::ifstream file ("../assertion_case_study/map_data/T_Junction_lanelets_bounds.txt");
     laneletVector(file, diag);
 
     // identify number of lanelets, capture ID and repeat for each
@@ -85,18 +87,20 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
 
     // Create table for map polygons used for assertion testing
     QString sql_string;
-    sql_string = "DROP TABLE IF EXISTS "+schema+".map_config";
-    model.setQuery(sql_string);
-    if (model.lastError().isValid())
-        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
-    if(diag) qDebug() << "map_config table deleted...";
-    sql_string = "create table "+schema+".map_config (agent_id int, sim_time float, "
-                                        "PRIMARY KEY (agent_id, sim_time), agent_type int, geom geometry(polygon, 4326)) "; //
+
+    sql_string = "CREATE TABLE IF NOT EXIST "+schema+".map_config (agent_id int, sim_time float, "
+            "PRIMARY KEY (agent_id, sim_time), agent_type int, geom geometry(polygon, 4326)) "; //
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
     if(diag) qDebug() << "#db_tables# map_config table created...";
     // Transfer the map dat removing unecessay polygons
+
+    sql_string = "DELETE FROM "+schema+".map_config";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "map_config table deleted...";
 
     sql_string = "insert into "+schema+".map_config (agent_id, sim_time, agent_type, geom)"
                  "SELECT osm_id, 0 AS sim_time, 0 AS agent_type, ST_Transform(way,4326) "
@@ -129,7 +133,7 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
 
     // Insert the into the map_config table
     sql_string = "insert into "+schema+".map_config (agent_id, agent_type, sim_time, geom) "
-                                       "SELECT agent_id, agent_type, sim_time, geom FROM "+schema+".map_config";
+                    "SELECT agent_id, agent_type, sim_time, geom FROM "+schema+".map_config";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#MAP_TRANSFER# " << model.lastError()<<"\033[0m";
@@ -166,7 +170,8 @@ void initMap(QSqlQueryModel& model, QString schema, bool diag){
 
     //or run animation by doing
         DROP TABLE IF EXISTS agents.combo_map
-        create table agents.combo_map (id SERIAL primary key, sim_time float, agent_id int, geom geometry )
+        create table agents.combo_map (id SERIAL primary key, sim_time float,
+                                                    agent_id int, geom geometry )
         insert into agents.combo_map (sim_time, agent_id, geom)
                 select -1 AS sim_time, ogc_fid AS agent_id, wkb_geometry AS geom
                 from agents.loop_geo

@@ -14,7 +14,6 @@ void laneletVector(std::ifstream& file, bool diag){
     //std::ifstream file ("loop_geo_RHD.txt");
     testLog.read(file, true);
 
-
     unsigned long nS = testLog.fileLineCount;
     std::cout << "#laneletVector# number of file lines in sim log ..." << nS <<std::endl;
 
