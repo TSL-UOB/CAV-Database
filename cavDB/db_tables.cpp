@@ -182,7 +182,8 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
 
     //LANELETS
 
-    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".lanelets (lanelet_id int, geom geometry(polygon, 4326), PRIMARY KEY(lanelet_id))";
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".lanelets (lanelet_id int, "
+                            "geom geometry(polygon, 4326), PRIMARY KEY(lanelet_id))";
     model.setQuery(sql_string);
     if (model.lastError().isValid())
         qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
@@ -194,9 +195,26 @@ void db_tables(QSqlQueryModel& model, QString schema, bool diag=true)
 //        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
 //    if(diag) qDebug() << "lanelets  zone table deleted...";
 
-
-
 //    create table sim_log.lanelets (lanelet_id int, geom geometry(polygon, 4326), PRIMARY KEY(lanelet_id));
+
+    //Raw Data
+
+    sql_string = "CREATE TABLE IF NOT EXISTS "+schema+".raw_data ("
+    "testNo int,repeatNo int, agentNo int, agentID int, agentType int,agentTypeNo int,"
+        "x float,y float,z float,yaw float,vel_x float,vel_y float,vel_z float,speed float,"
+        "time float,sim_time float,fps float,PRIMARY KEY(testNo ,repeatNo, agentNo))";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "#db_tables# raw_data created...";
+
+    sql_string = "DELETE FROM "+schema+".raw_data";
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    if(diag) qDebug() << "raw_data  zone table deleted...";
+
+
 
 
 }

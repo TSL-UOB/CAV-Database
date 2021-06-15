@@ -716,6 +716,23 @@ int main()
 
 
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~ raw data csv ~~~~~~~~~~~~~~~~~~~~~~
+    std::cout << "**************************" << std::endl;
+    std::cout << "*      raw data csv      *" << std::endl;
+    std::cout << "**************************\n" << std::endl;
+    QString sql_string =
+    "copy sim_log.raw_data "
+//    "from '../assertion_case_study/sim_log/all_data.csv' "
+    "from 'all_data.csv' "
+    "DELIMITER ',' "
+    "CSV HEADER";
+
+    model.setQuery(sql_string);
+    if (model.lastError().isValid())
+        qDebug() << "\033[0;31m#db_tables# " << model.lastError()<<"\033[0m";
+    else qDebug() << "#raw data csv# raw_data table populated...";
+
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~ sim-log values ~~~~~~~~~~~~~~~~~~~~~~
 
     //If reading from the sim log
