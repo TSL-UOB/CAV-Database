@@ -13,6 +13,7 @@
 #include <tuple>
 #include <unistd.h> //for pause timer
 #include <iterator> //for vector indexing
+#include <filesystem> //PWD
 
 #include "readsimlog.h"
 
@@ -560,6 +561,11 @@ public: std::vector<std::string> vect_typ;
             std::cout << " Reading Config File "<< std::endl;
             std::cout << "*********************"<< std::endl;
 
+            // get the PWD for debug
+            char working_dir[256];
+            getcwd(working_dir, 256);
+//            std::cout << "Current working directory: " << tmp << std::endl;
+
             if (myfile.is_open())
             {
                 getline(myfile,header);
@@ -568,7 +574,8 @@ public: std::vector<std::string> vect_typ;
                 getline(myfile,cfg_len);
                 getline(myfile,cfg_amax);
             } else {
-                qDebug() << "\033[0;31m#AgentConfig.read_file# ERROR: Config File can't be opened! Ensure the file is in the BUILD directory\n" <<"\033[0m";
+                qDebug() << "\033[0;31m#AgentConfig.read_file# ERROR: Config File can't be opened! "
+                            "Ensure the file is in the following directory: "<< working_dir <<"\n" <<"\033[0m";
             }
 
             if(diag) std::cout << "#AgentConfig.read_file#" << std::endl;
@@ -673,6 +680,9 @@ int main()
     //Ensure the file is in the local BUILD directory
     std::ifstream myfile ("agent_config.txt");
 
+    char current_directory[256];
+    getcwd(current_directory, 256); //Current working directory
+
     //class for reading config
     std::cout << "Starting agent config...\n";
     AgentConfig cfg;
@@ -728,9 +738,25 @@ int main()
 //    (simLogFile, true); bool useCyclicTime = true;//for carla testbench
 //    std::ifstream simLogFile ("lboro_static_tests_short.txt");testLog.read_file_testbench
 //    (simLogFile, true); bool useCyclicTime = true; bool rad_format=false;//for carla logs
+
+    // data file import settings
+    bool useCyclicTime=false;
+    bool rad_format=false;
+
+    // For Assertion Case for IEEE T-ITS paper
+    bool asr_case_study = false;
+    if (asr_case_study){
     std::ifstream simLogFile ("assertion_case_study/sim_log/all_data.txt");
-    testLog.read_file_testbench (simLogFile, true); bool useCyclicTime = true;
-    bool rad_format=true;//for AItest21 paper
+    testLog.read_file_testbench (simLogFile, true); useCyclicTime = true;
+    rad_format=true;}
+
+    // For Tramell Project
+    bool tramell_project= true;
+    if(tramell_project){
+    std::ifstream simLogFile ("assertion_case_study/sim_log/right_turn_pedestrian/all_data.txt");
+    testLog.read_file_testbench (simLogFile, true); useCyclicTime = true;
+    rad_format=true;}
+
 
     //if(verbose) std::cout<< "Agent "<<testLog.my_records[2].agentID<<" at time "
 //    <<testLog.my_records[2].simTime<<" is at XY " <<
