@@ -13,10 +13,10 @@ The red hashed area is the braking distance and the green area could be consider
 This code runs in QTcreator.
 
 Below is a simulation snapshot of a junction manoeuvre where a vehilce close passes other road users and pedestrians.
-![](Test003.gif)
+<img src="https://github.com/TSL-UOB/CAV-Database/blob/master/Test003.gif" alt="test B" width="800"/>
 
 By reading the simulation logs into the database code we can generate an abstracted version of the scenario. This abstracted view allows assertion testing to be undertaken using environmental information from map data for example.
-![](pg_demo.gif)
+<img src="https://github.com/TSL-UOB/CAV-Database/blob/master/pg_demo.gif" alt="test B" width="800"/>
 
 Another example of a pedestrian crossing scenario and the corresponding database view
 
