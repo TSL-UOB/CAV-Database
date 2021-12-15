@@ -19,7 +19,9 @@ By reading the simulation logs into the database code we can generate an abstrac
 ![](pg_demo.gif)
 
 Another example of a pedestrian crossing scenario and the corresponding database view
-![](testB_crop.gif)
-<img src="https://github.com/TSL-UOB/CAV-Database/blob/master/testB_data.gif" alt="test B" width="200"/>
+
+<img src="https://github.com/TSL-UOB/CAV-Database/blob/master/testB_crop.gif" alt="test B" width="200"/>
+
+<img src="https://github.com/TSL-UOB/CAV-Database/blob/master/testB_data.gif" alt="test B data" width="200"/>
 
 
