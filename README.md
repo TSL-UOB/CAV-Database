@@ -11,3 +11,9 @@ The red hashed area is the braking distance and the green area could be consider
 ![](database_braking_zone_2.png)
 
 This code runs in QTcreator.
+
+Below is a simulation snapshot of an overtaking scenario where a vehilce (red) cuts-in impeding the braking zone of the AV (yellow).
+![](TestA_Improved.gif)
+
+By reading the simulation logs into the database code we can generate an abstracted version of the scenario. This abstracted view allows assertion testing to be undertaken using environmental information from map data for example.
+![](pg_demo.gif)
