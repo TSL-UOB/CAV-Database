@@ -17,3 +17,9 @@ Below is a simulation snapshot of a junction manoeuvre where a vehilce close pas
 
 By reading the simulation logs into the database code we can generate an abstracted version of the scenario. This abstracted view allows assertion testing to be undertaken using environmental information from map data for example.
 ![](pg_demo.gif)
+
+Another example of a pedestrian crossing scenario and the corresponding database view
+![](testB_crop.gif)
+<img src="https://github.com/TSL-UOB/CAV-Database/testB_data.gif" alt="test B" width="200"/>
+
+
